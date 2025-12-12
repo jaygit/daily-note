@@ -1,0 +1,21 @@
+# .gitea/workflows/ci-smoke.yml
+name: CI Smoke
+on:
+  - push
+
+jobs:
+  smoke:
+    runs-on:
+      - "local-wsl"
+    steps:
+      - name: Show runner
+        run: |
+          uname -a
+          hostname
+          whoami
+          echo "== Disk / Mem =="
+          df -h /
+          free -h
+          echo "== Docker accessible? =="
+          docker version || true
+          docker ps --no-trunc || true

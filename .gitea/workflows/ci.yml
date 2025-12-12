@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name : Set up bash environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y coreutils
+
+      - name: Make scripts executable
+        run: |
+          chmod +x ./scripts/*.sh || true
+          chmod +x ./tests/*.sh || true
+
+      - name: Run tests
+        env:
+          # ensure scripts use an isolated VAULT_DIR inside runner workspace
+          VAULT_DIR: "${{ github.workspace }}/.test-vault"
+        run: |
+          mkdir -p "${VAULT_DIR}"
+          tests/run_tests.sh
+
+      - name: Ensure logs directory exists
+        if: always()
+        run: |
+          # create logs dir under the runner workspace to avoid empty-path issues
+          mkdir -p "$PWD/tests/logs"
+          ls -la "$PWD/tests/logs" || true
+
+      - name: Ensure 'gitea' hostname resolves (CI host mapping)
+        if: always()
+        env:
+          GITEA_HOST_IP: ${{ secrets.HOST_IP }}
+        run: |
+          if [ -z "${GITEA_HOST_IP:-}" ]; then
+            echo "GITEA_HOST_IP not set; skipping hosts mapping"
+            exit 0
+          fi
+          echo "Adding hosts entry: ${GITEA_HOST_IP} gitea"
+          # append mapping to /etc/hosts (requires sudo in runner)
+          sudo bash -c "echo '${GITEA_HOST_IP} gitea' >> /etc/hosts"
+          grep -F "${GITEA_HOST_IP} gitea" /etc/hosts || true
+
+      - name: Upload test logs
+        if: always()
+        # Use v3 of upload-artifact for GHES compatibility
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-logs
+          path: tests/logs/**
