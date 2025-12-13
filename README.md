@@ -100,50 +100,100 @@ Notes
     - `pull`: pull newer changes from `gitea` (fast-forward only by default). Use `--dry-run` to preview remote commits affecting the vault.
     - `commit`: commit vault changes with a descriptive message and push to `gitea`. Use `--dry-run` to print the commit message and staged changes without creating a commit or pushing.
   - Notes: The script focuses only on changes under the vault directory (as set by `VAULT_DIR`). It includes host and timestamp information in commit messages and presents clear options when local and remote have diverged.
-- `scripts/histnotes.sh` — History and archive helpers.
-- `scripts/follow_links.sh` — Extracts wiki links from a note and lets you open/select them with `fzf`.
+# Daily Notes Scripts
 
-## lib.sh — helper API
+Helper shell scripts to manage and navigate an Obsidian-style vault. The executable scripts live in the `scripts/` directory and assume the vault root is the parent directory (unless configured by the installer).
 
-`lib.sh` exports environment and provides interactive helper functions used by the scripts. Examples:
+## What's new
 
-- Environment
-  - `SCRIPT_DIR` — path to scripts directory
-  - `VAULT_DIR` — vault root (defaults to parent of scripts/)
+- Installer (`install.sh`) now installs only the `scripts/` tree under an XDG-aware prefix, creates a small `obs` shim in your XDG bin dir, and persists runtime settings in `scripts/.env` (includes `VAULT_DIR` and `VERSION`).
+- `scripts/lib.sh` loads and exports `.env` files (first one found) so installed scripts pick up `VAULT_DIR`, `GIT_REMOTE_*`, and `VERSION` automatically.
+- `scripts/search.sh` and other scripts provide fallbacks when tools are missing: `rg` → `grep`, `bat` → `cat`, `fzf` can be overridden with `FZF_CMD` (useful for tests).
+- A manpage `man/obs.1` is included and the installer will try to install it to a writable manpath when available.
 
-- Prompt helpers (gum-aware)
-  - `ask "Prompt" "default"` — returns user input
-  - `choose_one "Header" opt1 opt2 ...` — selection UI (`gum choose` with header if available)
-  - `confirm "Prompt"` — yes/no prompt
+## Quick start
 
-- Formatting helpers
-  - `_fmt_tags "a,b,c"` → formats `a, b, c` for YAML inline lists
-  - `_fmt_quoted_array "a,b,c"` → formats `["a","b","c"]`
+Install locally (interactive):
 
-- Utilities
-  - `sanitize_filename "Title string"`
-  - `escape_yaml_string "text"`
+```bash
+./install.sh
+```
+
+Non-interactive install (sample vault):
+
+```bash
+./install.sh --yes
+```
+
+Install into custom XDG paths (useful for CI/testing):
+
+```bash
+XDG_DATA_HOME=/tmp/mydata XDG_BIN_HOME=/tmp/mybin ./install.sh --yes
+```
+
+After installation the `obs` shim will be placed in your XDG bin directory (defaults to `${XDG_BIN_HOME:-$HOME/.local/bin}`). Ensure that directory is in your `PATH`.
+
+To uninstall use the shim or the installer directly:
+
+```bash
+obs --uninstall
+# or
+./install.sh --uninstall --yes
+```
+
+## Key scripts
+
+- `scripts/main.sh` — entry point and dispatcher; supports `-v|--version` which reads `VERSION` from `scripts/.env` (installed tree) or detects it from `RELEASE_NOTES`/git tags.
+- `scripts/create_note.sh` — create notes (interactive or non-interactive via flags).
+- `scripts/search.sh` — fuzzy search with previews; diary mode available (`diary` subcommand or `main.sh -o diary`).
+- `scripts/gitnotes.sh` — vault-focused git helpers (`status`, `pull`, `commit`) that use the configured `GIT_REMOTE_*` settings.
+- `scripts/jobs.sh`, `scripts/histnotes.sh`, `scripts/follow_links.sh` — utility helpers.
+
+Usage examples:
+
+```bash
+scripts/create_note.sh
+scripts/create_note.sh -t "My Note" -c note -v /path/to/vault -n
+scripts/search.sh
+scripts/main.sh -o search
+```
+
+## Environment & configuration
+
+- The installer writes `scripts/.env` into the installed tree with `VAULT_DIR`, optionally `GIT_REMOTE_NAME`/`GIT_REMOTE_URL`, and `VERSION`.
+- During development the scripts look for a `.env` under `scripts/` or walk up common locations; `scripts/lib.sh` will export the variables it finds.
+- Override `FZF_CMD` to point to a deterministic `fzf` stub in tests.
+
+## Tool fallbacks
+
+- `rg` (ripgrep) is preferred; scripts will fall back to `grep` when `rg` is not available.
+- `bat` or `batcat` is used for pretty previews; falls back to `cat` when missing.
+- `fzf` is used for interactive selection; tests override it via `FZF_CMD`.
 
 ## Tests & CI
 
-- Tests live under `tests/` and are written as shell scripts. A non-interactive gum shim is provided so tests can exercise interactive flows in CI.
-- Logs are written to `tests/logs/` for CI artifact collection.
-- The workflow adds a hosts mapping step for private runners (set secret `HOST_IP`) to help resolve a private `gitea` hostname when uploading artifacts.
+- Tests are shell scripts under `tests/`. A gum/fzf shim is provided for CI so interactive flows can run deterministically.
+- Logs are written to `tests/logs/` for artifact collection.
+- The CI workflow includes a host-resolution helper for private runners (set secret `HOST_IP`) and the artifact upload step uses a compatible uploader for GHES/private environments.
+
+## Development notes
+
+- Release packaging discovers `VERSION` from `RELEASE_NOTES/v.*.md` or from an annotated git tag and the installer persists that `VERSION` into `scripts/.env` so `obs --version` continues to work after install.
+- The `obs` shim delegates `--uninstall` to the installer so the installed tree can cleanly remove files it created.
 
 ## Backlinks behavior
 
-- When you select existing notes during creation, the scripts will add a `## Backlinks` section (created if missing) and avoid duplicate links.
+- When creating notes the scripts will add a `## Backlinks` section when linking to existing notes and will avoid duplicate backlinks.
 
 ## Tips
 
-- Install `gum`, `fzf`, and `bat`/`batcat` for a smoother interactive experience and nicer previews.
-- If you move the scripts, update `lib.sh` to set the correct `VAULT_DIR`.
+- Install `gum`, `fzf`, and `bat`/`batcat` for the best interactive experience.
+- For CI or minimal containers the scripts handle missing tools with fallbacks; set `FZF_CMD` for deterministic tests.
 
 ## Contributing
 
-- Changes are intended to be small and focused. Open issues or PRs for feature requests.
+- Keep changes small and focused. Open issues or PRs for feature requests.
 
 ## License
 
 Personal use. No license attached.
-```
