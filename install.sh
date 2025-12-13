@@ -13,6 +13,36 @@ SAMPLE_VAULT_DIR="$PREFIX_DIR/sample-vault"
 
 echo "Installing daily-note to: $PREFIX_DIR"
 
+# Handle uninstall invocation: `install.sh --uninstall` removes installed files
+if [ "${1:-}" = "--uninstall" ]; then
+  echo "Uninstalling daily-note from: $PREFIX_DIR"
+  removed=()
+  if [ -d "$SCRIPTS_DIR" ]; then
+    removed+=("$SCRIPTS_DIR")
+    rm -rf "$SCRIPTS_DIR"
+  fi
+  OBS_SHIM="$XDG_BIN_HOME/obs"
+  if [ -f "$OBS_SHIM" ]; then
+    removed+=("$OBS_SHIM")
+    rm -f "$OBS_SHIM"
+  fi
+  MANPAGE="$PREFIX_DIR/share/man/man1/obs.1"
+  if [ -f "$MANPAGE" ]; then
+    removed+=("$MANPAGE")
+    rm -f "$MANPAGE"
+    rmdir --ignore-fail-on-non-empty "$(dirname "$MANPAGE")" 2>/dev/null || true
+  fi
+  if [ ${#removed[@]} -eq 0 ]; then
+    echo "Nothing removed: no installed files found at expected locations."
+    exit 0
+  fi
+  echo "Removed the following files/directories:"
+  for f in "${removed[@]}"; do
+    echo " - $f"
+  done
+  exit 0
+fi
+
 mkdir -p "$PREFIX_DIR"
 mkdir -p "$XDG_BIN_HOME"
 
@@ -56,6 +86,12 @@ if [ -f "$SCRIPTS_DIR/main.sh" ]; then
   chmod +x "$SCRIPTS_DIR/main.sh"
 fi
 
+# Copy installer into prefix so the installed shim can delegate uninstall to it
+if [ -f "$PKG_ROOT/install.sh" ]; then
+  cp "$PKG_ROOT/install.sh" "$SCRIPTS_DIR/install.sh"
+  chmod +x "$SCRIPTS_DIR/install.sh"
+fi
+
 # Create `obs` shim in user local bin. The shim supports `--uninstall` which
 # will remove the installed scripts, shim and manpage and report what was
 # removed. The shim uses the absolute paths chosen at install time.
@@ -64,36 +100,10 @@ echo "Creating shim: $OBS_SHIM -> $SCRIPTS_DIR/main.sh"
 cat > "$OBS_SHIM" <<EOF
 #!/usr/bin/env bash
 SCRIPTS_DIR="$SCRIPTS_DIR"
-PREFIX_DIR="$PREFIX_DIR"
-MANPAGE="$PREFIX_DIR/share/man/man1/obs.1"
-OBS_SHIM="$OBS_SHIM"
 
+# Delegate uninstall to the installer so uninstall logic is centralized.
 if [ "${1:-}" = "--uninstall" ]; then
-  echo "Uninstalling obs from: $PREFIX_DIR"
-  removed=()
-  if [ -d "$SCRIPTS_DIR" ]; then
-    removed+=("$SCRIPTS_DIR")
-    rm -rf "$SCRIPTS_DIR"
-  fi
-  if [ -f "$MANPAGE" ]; then
-    removed+=("$MANPAGE")
-    rm -f "$MANPAGE"
-    # attempt to remove parent man dir if empty
-    rmdir --ignore-fail-on-non-empty "$(dirname "$MANPAGE")" 2>/dev/null || true
-  fi
-  if [ -f "$OBS_SHIM" ]; then
-    removed+=("$OBS_SHIM")
-    rm -f "$OBS_SHIM"
-  fi
-  if [ ${#removed[@]} -eq 0 ]; then
-    echo "Nothing to remove. Nothing found at expected locations."
-    exit 0
-  fi
-  echo "Removed the following files/directories:"
-  for f in "${removed[@]}"; do
-    echo " - $f"
-  done
-  exit 0
+  exec "$SCRIPTS_DIR/install.sh" --uninstall
 fi
 
 exec "$SCRIPTS_DIR/main.sh" "\$@"
