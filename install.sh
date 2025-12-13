@@ -17,7 +17,30 @@ mkdir -p "$PREFIX_DIR"
 mkdir -p "$XDG_BIN_HOME"
 
 echo "Copying package files..."
-rsync -a --exclude '.git' --exclude 'tests' --exclude 'dist' --exclude '.venv' "$PKG_ROOT/" "$PREFIX_DIR/"
+RSYNC_AVAILABLE=false
+if command -v rsync >/dev/null 2>&1; then
+  RSYNC_AVAILABLE=true
+fi
+
+# Helper: copy package tree with exclusions. Prefer rsync when available,
+# otherwise use tar piped to extract into destination while honoring excludes.
+copy_package() {
+  local src="$1" dest="$2"
+  if [ "$RSYNC_AVAILABLE" = true ]; then
+    rsync -a --exclude '.git' --exclude 'tests' --exclude 'dist' --exclude '.venv' "$src/" "$dest/"
+  else
+    mkdir -p "$dest"
+    # Use tar to copy while excluding common directories
+    tar -C "$src" \
+      --exclude='./.git' \
+      --exclude='./tests' \
+      --exclude='./dist' \
+      --exclude='./.venv' \
+      -cf - . | tar -C "$dest" -xpf -
+  fi
+}
+
+copy_package "$PKG_ROOT" "$PREFIX_DIR"
 
 chmod -R u+rwX,go+rX "$PREFIX_DIR"
 
@@ -70,7 +93,12 @@ if [ -n "$OVERRIDE_VAULT" ]; then
 elif [ "$INSTALL_SAMPLE" -eq 1 ]; then
   mkdir -p "$SAMPLE_VAULT_DIR"
   if [ -d "$PKG_ROOT/notes/samples" ]; then
-    rsync -a "$PKG_ROOT/notes/samples/" "$SAMPLE_VAULT_DIR/"
+    if [ "$RSYNC_AVAILABLE" = true ]; then
+      rsync -a "$PKG_ROOT/notes/samples/" "$SAMPLE_VAULT_DIR/"
+    else
+      mkdir -p "$SAMPLE_VAULT_DIR"
+      cp -a "$PKG_ROOT/notes/samples/." "$SAMPLE_VAULT_DIR/" || true
+    fi
   fi
   echo "VAULT_DIR=$SAMPLE_VAULT_DIR" >> "$ENV_FILE"
   echo "Installed sample vault at: $SAMPLE_VAULT_DIR"
@@ -79,7 +107,11 @@ else
     # default to sample vault if --yes provided
     mkdir -p "$SAMPLE_VAULT_DIR"
     if [ -d "$PKG_ROOT/notes/samples" ]; then
-      rsync -a "$PKG_ROOT/notes/samples/" "$SAMPLE_VAULT_DIR/"
+        if [ "$RSYNC_AVAILABLE" = true ]; then
+          rsync -a "$PKG_ROOT/notes/samples/" "$SAMPLE_VAULT_DIR/"
+        else
+          cp -a "$PKG_ROOT/notes/samples/." "$SAMPLE_VAULT_DIR/" || true
+        fi
     fi
     echo "VAULT_DIR=$SAMPLE_VAULT_DIR" >> "$ENV_FILE"
     echo "Installed sample vault at: $SAMPLE_VAULT_DIR"
@@ -90,7 +122,11 @@ else
     if [[ $REPLY =~ ^[Yy]$ ]]; then
       mkdir -p "$SAMPLE_VAULT_DIR"
       if [ -d "$PKG_ROOT/notes/samples" ]; then
-        rsync -a "$PKG_ROOT/notes/samples/" "$SAMPLE_VAULT_DIR/"
+          if [ "$RSYNC_AVAILABLE" = true ]; then
+            rsync -a "$PKG_ROOT/notes/samples/" "$SAMPLE_VAULT_DIR/"
+          else
+            cp -a "$PKG_ROOT/notes/samples/." "$SAMPLE_VAULT_DIR/" || true
+          fi
       fi
       echo "VAULT_DIR=$SAMPLE_VAULT_DIR" >> "$ENV_FILE"
       echo "Installed sample vault at: $SAMPLE_VAULT_DIR"
