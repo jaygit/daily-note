@@ -97,7 +97,7 @@ jobs:
           if [ "$status" -eq 0 ]; then
             echo "Adding hosts entry: ${HOST_IP} gitea"
             # append mapping to /etc/hosts (requires sudo in runner)
-            sudo bash -c "echo '${HOST_IP} gitea' >> /etc/hosts"
+            sudo bash -c "echo '${HOST_IP}:${HOST_PORT:-} gitea' >> /etc/hosts"
             grep -F "${HOST_IP} gitea" /etc/hosts || true
 
             exit 0
