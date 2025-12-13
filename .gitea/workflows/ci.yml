@@ -20,83 +20,83 @@ jobs:
 
       - name: Make scripts executable
         run: |
-          chmod +x ./scripts/*.sh || true
-          chmod +x ./tests/*.sh || true
+          - id: ensure_gitea
+            name: Ensure CI server hostname resolves (host mapping)
+            if: always()
+            env:
+              HOST_IP: ${{ secrets.HOST_IP }}
+              HOST_PORT: ${{ secrets.HOST_PORT }}
+            run: |
+              # Don't set -e so we can always print debug output before exiting
+              set -uo pipefail
 
-      # .env presence check removed: runtime configuration should come from CI env/secrets
+              # Determine target hostname from CI-provided variables (prefer provider URLs)
+              TARGET_HOST=""
+              if [ -n "${GITHUB_SERVER_URL:-}" ]; then
+                TARGET_HOST=$(echo "$GITHUB_SERVER_URL" | sed -E 's#https?://##' | sed -E 's#/.*$##')
+              elif [ -n "${GITEA_SERVER:-}" ]; then
+                TARGET_HOST=$(echo "$GITEA_SERVER" | sed -E 's#https?://##' | sed -E 's#/.*$##')
+              elif [ -n "${GITEA_SERVER_URL:-}" ]; then
+                TARGET_HOST=$(echo "$GITEA_SERVER_URL" | sed -E 's#https?://##' | sed -E 's#/.*$##')
+              elif [ -n "${CI_SERVER_URL:-}" ]; then
+                TARGET_HOST=$(echo "$CI_SERVER_URL" | sed -E 's#https?://##' | sed -E 's#/.*$##')
+              else
+                TARGET_HOST="gitea"
+              fi
 
-      - name: Set VERSION for build
-        run: |
-          # Prefer env-provided VERSION, else pick latest RELEASE_NOTES/v.*.md, else git tag
-          if [ -n "${VERSION:-}" ]; then
-            echo "Using provided VERSION=$VERSION"
-            echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          elif ls RELEASE_NOTES/v.*.md >/dev/null 2>&1; then
-            v=$(ls RELEASE_NOTES/v.*.md | sed -E 's#.*/(v[0-9]+\.[0-9]+\.[0-9]+)\.md#\1#' | sort -V | tail -n1)
-            echo "Detected VERSION from RELEASE_NOTES: $v"
-            echo "VERSION=$v" >> "$GITHUB_ENV"
-          else
-            t=$(git describe --tags --abbrev=0 2>/dev/null || echo "v.0.0.0")
-            echo "Detected VERSION from git: $t"
-            echo "VERSION=$t" >> "$GITHUB_ENV"
-          fi
+              echo "Target host resolved to: $TARGET_HOST"
 
-      - name: Run tests
-        env:
-          # ensure scripts use an isolated VAULT_DIR inside runner workspace
-          VAULT_DIR: "${{ github.workspace }}/.test-vault"
-        run: |
-          mkdir -p "${VAULT_DIR}"
-          tests/run_tests.sh
+              try_curl() {
+                local host="$1" port="$2"
+                if [ -n "$port" ]; then
+                  curl -fsS --connect-timeout 5 "http://$host:$port" >/dev/null 2>&1 && return 0 || true
+                  curl -fsS --connect-timeout 5 "https://$host:$port" >/dev/null 2>&1 && return 0 || true
+                else
+                  curl -fsS --connect-timeout 5 "http://$host" >/dev/null 2>&1 && return 0 || true
+                  curl -fsS --connect-timeout 5 "https://$host" >/dev/null 2>&1 && return 0 || true
+                fi
+                return 1
+              }
 
-      - name: Ensure logs directory exists
-        if: always()
-        run: |
-          # create logs dir under the runner workspace to avoid empty-path issues
-          mkdir -p "$PWD/tests/logs"
-          ls -la "$PWD/tests/logs" || true
+              status=1
+              debug_msg=""
 
-      - id: ensure_gitea
-        name: Ensure CI server hostname resolves (host mapping)
-        if: always()
-        env:
-          HOST_IP: ${{ secrets.HOST_IP }}
-          HOST_PORT: ${{ secrets.HOST_PORT }}
-        run: |
-          set -euo pipefail
-          # Determine target hostname from CI-provided variables (prefer provider URLs)
-          TARGET_HOST=""
-          if [ -n "${GITHUB_SERVER_URL:-}" ]; then
-            TARGET_HOST=$(echo "$GITHUB_SERVER_URL" | sed -E 's#https?://##' | sed -E 's#/.*$##')
-          elif [ -n "${GITEA_SERVER:-}" ]; then
-            TARGET_HOST=$(echo "$GITEA_SERVER" | sed -E 's#https?://##' | sed -E 's#/.*$##')
-          elif [ -n "${GITEA_SERVER_URL:-}" ]; then
-            TARGET_HOST=$(echo "$GITEA_SERVER_URL" | sed -E 's#https?://##' | sed -E 's#/.*$##')
-          elif [ -n "${CI_SERVER_URL:-}" ]; then
-            TARGET_HOST=$(echo "$CI_SERVER_URL" | sed -E 's#https?://##' | sed -E 's#/.*$##')
-          else
-            TARGET_HOST="gitea"
-          fi
+              echo "Checking connectivity to ${TARGET_HOST}${HOST_PORT:+:$HOST_PORT}"
+              if try_curl "$TARGET_HOST" "${HOST_PORT:-}"; then
+                status=0
+                debug_msg="reached"
+              else
+                echo "Could not reach $TARGET_HOST via network. Checking secrets for HOST_IP..."
+                if [ -n "${HOST_IP:-}" ]; then
+                  echo "HOST_IP secret present: will append to /etc/hosts"
+                  echo "Adding hosts entry: ${HOST_IP} ${TARGET_HOST}"
+                  sudo bash -c "echo '${HOST_IP} ${TARGET_HOST}' >> /etc/hosts"
+                  grep -F "${HOST_IP} ${TARGET_HOST}" /etc/hosts || true
+                  if try_curl "$TARGET_HOST" "${HOST_PORT:-}"; then
+                    status=0
+                    debug_msg="reached-after-hosts-mapping"
+                  else
+                    status=2
+                    debug_msg="unreachable-after-hosts-mapping"
+                  fi
+                else
+                  status=3
+                  debug_msg="no-host-ip-secret"
+                fi
+              fi
 
-          echo "Target host resolved to: $TARGET_HOST"
+              # Emit debug output and set step outputs
+              echo "ensure_gitea_target=$TARGET_HOST" >> "$GITHUB_OUTPUT" || true
+              echo "ensure_gitea_host_ip=${HOST_IP:-}" >> "$GITHUB_OUTPUT" || true
+              echo "ensure_gitea_host_port=${HOST_PORT:-}" >> "$GITHUB_OUTPUT" || true
+              echo "ensure_gitea_status=$status" >> "$GITHUB_OUTPUT" || true
+              echo "DEBUG: ensure_gitea target=$TARGET_HOST host_ip=${HOST_IP:-} port=${HOST_PORT:-} status=$status message=$debug_msg"
 
-          try_curl() {
-            local host="$1" port="$2"
-            if [ -n "$port" ]; then
-              curl -fsS --connect-timeout 5 "http://$host:$port" >/dev/null 2>&1 && return 0 || true
-              curl -fsS --connect-timeout 5 "https://$host:$port" >/dev/null 2>&1 && return 0 || true
-            else
-              curl -fsS --connect-timeout 5 "http://$host" >/dev/null 2>&1 && return 0 || true
-              curl -fsS --connect-timeout 5 "https://$host" >/dev/null 2>&1 && return 0 || true
-            fi
-            return 1
-          }
-
-          echo "Checking connectivity to ${TARGET_HOST}${HOST_PORT:+:$HOST_PORT}"
-          if try_curl "$TARGET_HOST" "${HOST_PORT:-}"; then
-            echo "Successfully reached $TARGET_HOST${HOST_PORT:+:$HOST_PORT}"
-            exit 0
-          fi
+              if [ "$status" -eq 0 ]; then
+                exit 0
+              else
+                exit 1
+              fi
 
           echo "Could not reach $TARGET_HOST via network. Checking secrets for HOST_IP..."
           if [ -n "${HOST_IP:-}" ]; then
