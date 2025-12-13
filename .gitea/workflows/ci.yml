@@ -22,7 +22,7 @@ jobs:
           chmod +x ./scripts/*.sh || true
           chmod +x ./tests/*.sh || true
 
-      - id: ensure_gitea
+      - id: ensure_host
         name: Ensure CI server hostname resolves (host mapping)
         if: always()
         env:
@@ -43,7 +43,7 @@ jobs:
           elif [ -n "${CI_SERVER_URL:-}" ]; then
             TARGET_HOST=$(echo "$CI_SERVER_URL" | sed -E 's#https?://##' | sed -E 's#/.*$##')
           else
-            TARGET_HOST="gitea"
+            TARGET_HOST="host"
           fi
 
           echo "Target host resolved to: $TARGET_HOST"
@@ -88,17 +88,30 @@ jobs:
           fi
 
           # Emit debug output and set step outputs
-          echo "ensure_gitea_target=$TARGET_HOST" >> "$GITHUB_OUTPUT" || true
-          echo "ensure_gitea_host_ip=${HOST_IP:-}" >> "$GITHUB_OUTPUT" || true
-          echo "ensure_gitea_host_port=${HOST_PORT:-}" >> "$GITHUB_OUTPUT" || true
-          echo "ensure_gitea_status=$status" >> "$GITHUB_OUTPUT" || true
-          echo "DEBUG: ensure_gitea target=$TARGET_HOST host_ip=${HOST_IP:-} port=${HOST_PORT:-} status=$status message=$debug_msg"
+          echo "ensure_host_target=$TARGET_HOST" >> "$GITHUB_OUTPUT" || true
+          echo "ensure_host_host_ip=${HOST_IP:-}" >> "$GITHUB_OUTPUT" || true
+          echo "ensure_host_host_port=${HOST_PORT:-}" >> "$GITHUB_OUTPUT" || true
+          echo "ensure_host_status=$status" >> "$GITHUB_OUTPUT" || true
+          echo "DEBUG: ensure_host target=$TARGET_HOST host_ip=${HOST_IP:-} port=${HOST_PORT:-} status=$status message=$debug_msg"
 
           if [ "$status" -eq 0 ]; then
             exit 0
           else
             exit 1
           fi
+
+      - name: Upload test logs
+        if: steps.ensure_host.outputs.ensure_host_status == '0'
+        run: |
+          echo "Uploading test logs (if any)"
+          # create a tarball of tests/logs if it exists
+          if [ -d tests/logs ]; then
+            tar czf test-logs.tar.gz -C tests logs || true
+            ls -l test-logs.tar.gz || true
+          else
+            echo "No tests/logs directory present"
+          fi
+        continue-on-error: true
 
       - name: Run tests
         run: |
