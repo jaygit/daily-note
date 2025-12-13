@@ -50,6 +50,51 @@ Behavior:
   - Features: prompt for search terms, fuzzy-select matching files with preview (uses `fzf`), open selection in `$EDITOR` (supports multi-select), or view raw contents.
   - Requirements: `rg` (ripgrep) and `fzf` recommended; `bat`/`batcat` optional for nicer previews.
   - Testing: set environment variable `FZF_CMD` to a path to a stub executable to override `fzf` (useful for tests that need deterministic non-interactive selection).
+
+Installation
+------------
+This project includes a simple installer `install.sh` that copies the package under your XDG data directory and creates a small `obs` shim in your XDG bin directory.
+
+- Default locations:
+  - Data: `${XDG_DATA_HOME:-$HOME/.local/share}/daily-note`
+  - Bin: `${XDG_BIN_HOME:-$HOME/.local/bin}`
+
+- The installer writes its runtime env to `scripts/.env` inside the installed tree. This file will contain `VAULT_DIR` and (optionally) `GIT_REMOTE_NAME`/`GIT_REMOTE_URL` so `scripts/lib.sh` can load them.
+
+- Interactive install (choose sample or point at existing vault):
+
+```bash
+./install.sh
+```
+
+- Non-interactive examples:
+
+Install with bundled sample vault:
+
+```bash
+./install.sh --yes
+# or explicit flag
+./install.sh --sample-vault
+```
+
+Install and set an existing vault path:
+
+```bash
+./install.sh --vault-path /path/to/your/vault
+```
+
+- Override XDG paths for testing or CI:
+
+```bash
+XDG_DATA_HOME=/tmp/mydata XDG_BIN_HOME=/tmp/mybin ./install.sh --yes
+```
+
+- After installation the `obs` shim will be placed in your XDG bin directory. Ensure that `XDG_BIN_HOME` (usually `~/.local/bin`) is in your `PATH` so `obs` is available from the shell.
+
+Notes
+-----
+- The installer will write `VAULT_DIR` into the installed `scripts/.env`. `scripts/lib.sh` sources the first `.env` it finds (it prefers the `scripts/` location in the installed tree), so you can edit that file to change the configured vault or remote settings.
+- If you want the installer to configure a remote for pushes/pulls, run the installer pointing at a vault that is a git repo; the installer will list remotes and can add/alias one as `gitea`, storing `GIT_REMOTE_NAME` and `GIT_REMOTE_URL` in the `.env`.
   - Usage: `scripts/gitnotes.sh <status|pull|commit> [--dry-run]`
     - `status`: show local vs `gitea` remote status for vault files
     - `pull`: pull newer changes from `gitea` (fast-forward only by default). Use `--dry-run` to preview remote commits affecting the vault.
