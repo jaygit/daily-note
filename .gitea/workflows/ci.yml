@@ -26,84 +26,17 @@ jobs:
         name: Ensure CI server hostname resolves (host mapping)
         if: always()
         env:
-          HOST_IP: ${{ secrets.HOST_IP }}
-          HOST_PORT: ${{ secrets.HOST_PORT }}
+          GITEA_HOST_IP: ${{ secrets.HOST_IP }}
         run: |
-          # Don't set -e so we can always print debug output before exiting
-          set -uo pipefail
-
-          # Determine target hostname from CI-provided variables (prefer provider URLs)
-          TARGET_HOST=""
-          if [ -n "${GITHUB_SERVER_URL:-}" ]; then
-            TARGET_HOST=$(echo "$GITHUB_SERVER_URL" | sed -E 's#https?://##' | sed -E 's#/.*$##')
-          elif [ -n "${GITEA_SERVER:-}" ]; then
-            TARGET_HOST=$(echo "$GITEA_SERVER" | sed -E 's#https?://##' | sed -E 's#/.*$##')
-          elif [ -n "${GITEA_SERVER_URL:-}" ]; then
-            TARGET_HOST=$(echo "$GITEA_SERVER_URL" | sed -E 's#https?://##' | sed -E 's#/.*$##')
-          elif [ -n "${CI_SERVER_URL:-}" ]; then
-            TARGET_HOST=$(echo "$CI_SERVER_URL" | sed -E 's#https?://##' | sed -E 's#/.*$##')
-          else
-            TARGET_HOST="host"
-          fi
-
-          echo "Target host resolved to: $TARGET_HOST"
-
-          try_curl() {
-            local host="$1" port="$2"
-            if [ -n "$port" ]; then
-              curl -fsS --connect-timeout 5 "http://$host:$port" >/dev/null 2>&1 && return 0 || true
-              curl -fsS --connect-timeout 5 "https://$host:$port" >/dev/null 2>&1 && return 0 || true
-            else
-              curl -fsS --connect-timeout 5 "http://$host" >/dev/null 2>&1 && return 0 || true
-              curl -fsS --connect-timeout 5 "https://$host" >/dev/null 2>&1 && return 0 || true
-            fi
-            return 1
-          }
-
-          status=1
-          debug_msg=""
-
-          echo "Checking connectivity to ${TARGET_HOST}${HOST_PORT:+:$HOST_PORT}"
-          if try_curl "$TARGET_HOST" "${HOST_PORT:-}"; then
-            status=0
-            debug_msg="reached"
-          else
-            echo "Could not reach $TARGET_HOST via network. Checking secrets for HOST_IP..."
-            if [ -n "${HOST_IP:-}" ]; then
-              echo "HOST_IP secret present: will append to /etc/hosts"
-              echo "Adding hosts entry: ${HOST_IP} ${TARGET_HOST}"
-              sudo bash -c "echo '${HOST_IP} ${TARGET_HOST}' >> /etc/hosts"
-              grep -F "${HOST_IP} ${TARGET_HOST}" /etc/hosts || true
-              if try_curl "$TARGET_HOST" "${HOST_PORT:-}"; then
-                status=0
-                debug_msg="reached-after-hosts-mapping"
-              else
-                status=2
-                debug_msg="unreachable-after-hosts-mapping"
-              fi
-            else
-              status=3
-              debug_msg="no-host-ip-secret"
-            fi
-          fi
-
-          # Emit debug output and set step outputs
-          echo "ensure_host_target=$TARGET_HOST" >> "$GITHUB_OUTPUT" || true
-          echo "ensure_host_host_ip=${HOST_IP:-}" >> "$GITHUB_OUTPUT" || true
-          echo "ensure_host_host_port=${HOST_PORT:-}" >> "$GITHUB_OUTPUT" || true
-          echo "ensure_host_status=$status" >> "$GITHUB_OUTPUT" || true
-          echo "DEBUG: ensure_host target=$TARGET_HOST host_ip=${HOST_IP:-} port=${HOST_PORT:-} status=$status message=$debug_msg"
-
-          if [ "$status" -eq 0 ]; then
-            echo "Adding hosts entry: ${HOST_IP} gitea"
-            # append mapping to /etc/hosts (requires sudo in runner)
-            sudo bash -c "echo '${HOST_IP}:${HOST_PORT:-} gitea' >> /etc/hosts"
-            grep -F "${HOST_IP} gitea" /etc/hosts || true
-
+          echo "HOST_IP ${GITEA_HOST_IP:-}
+          if [ -z "${GITEA_HOST_IP:-}" ]; then
+            echo "GITEA_HOST_IP not set; skipping hosts mapping"
             exit 0
-          else
-            exit 1
           fi
+
+          echo "Adding hosts entry: ${GITEA_HOST_IP} gitea"
+          # append mapping to /etc/hosts (requires sudo in runner)
+          sudo bash -c "echo '${GITEA_HOST_IP} gitea' >> /etc/hosts"
 
       - name: Run tests
         run: |
