@@ -42,6 +42,10 @@ Behavior:
 ## Other scripts
 - `scripts/jobs.sh` — Helpers for job notes and quick status updates.
 - `scripts/gitnotes.sh` — Git helpers for the vault.
+- `scripts/search.sh` — Interactive search UI for the vault.
+  - Usage: `scripts/search.sh` or via `scripts/main.sh -o search`
+  - Features: prompt for search terms, fuzzy-select matching files with preview (uses `fzf`), open selection in `$EDITOR` (supports multi-select), or view raw contents.
+  - Requirements: `rg` (ripgrep) and `fzf` recommended; `bat`/`batcat` optional for nicer previews.
   - Usage: `scripts/gitnotes.sh <status|pull|commit> [--dry-run]`
     - `status`: show local vs `gitea` remote status for vault files
     - `pull`: pull newer changes from `gitea` (fast-forward only by default). Use `--dry-run` to preview remote commits affecting the vault.

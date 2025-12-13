@@ -43,11 +43,19 @@ while true; do
   preview_cmd=$(print_preview_cmd)
 
   if command -v fzf >/dev/null 2>&1; then
-    # Run fzf with a preview (relative paths are nicer)
+    # Run fzf with a preview (relative paths are nicer). Allow multi-select.
     cd "$VAULT_DIR" || true
-    selected=$(printf '%s\n' "${results[@]}" | sed "s#^$VAULT_DIR/##" | fzf --ansi --preview "$preview_cmd" --preview-window=right:60% --prompt="Search: $query > ")
+    selected_raw=$(printf '%s\n' "${results[@]}" | sed "s#^$VAULT_DIR/##" | fzf --ansi --multi --preview "$preview_cmd" --preview-window=right:60% --prompt="Search: $query > ")
     # restore cwd
     cd - >/dev/null 2>&1 || true
+    # convert raw selection (possibly multiline) into array
+    if [ -z "$selected_raw" ]; then
+      selected=""
+    else
+      mapfile -t sel_arr <<<"$selected_raw"
+      # join with NUL-safe handling later
+      selected="${sel_arr[0]}"
+    fi
   else
     echo "fzf not found; printing matches:";
     printf '%s\n' "${results[@]}";
@@ -56,8 +64,15 @@ while true; do
 
   [ -n "$selected" ] || continue
 
-  # Resolve full path
-  target="$VAULT_DIR/$selected"
+  # Resolve full path(s)
+  if [ -z "$selected_raw" ]; then
+    continue
+  fi
+  mapfile -t sel_arr <<<"$selected_raw"
+  targets=()
+  for s in "${sel_arr[@]}"; do
+    targets+=("$VAULT_DIR/$s")
+  done
 
   # Ask what to do with selected file
   if declare -f choose_one >/dev/null 2>&1; then
@@ -79,19 +94,23 @@ while true; do
   case "$action" in
     "Open in editor")
       if [ -n "${NO_EDITOR:-}" ]; then
-        echo "NO_EDITOR set; skipping open. File: $target"
+        echo "NO_EDITOR set; skipping open. Files: ${targets[*]}"
       else
-        ${EDITOR:-vi} "$target"
+        # Open all selected files in one editor invocation (if editor supports multiple files)
+        ${EDITOR:-vi} "${targets[@]}"
       fi
       ;;
     "Show raw")
-      if command -v batcat >/dev/null 2>&1; then
-        batcat --style=plain --paging=never "$target" || cat "$target"
-      elif command -v bat >/dev/null 2>&1; then
-        bat --style=plain --paging=never "$target" || cat "$target"
-      else
-        cat "$target"
-      fi
+      for t in "${targets[@]}"; do
+        if command -v batcat >/dev/null 2>&1; then
+          batcat --style=plain --paging=never "$t" || cat "$t"
+        elif command -v bat >/dev/null 2>&1; then
+          bat --style=plain --paging=never "$t" || cat "$t"
+        else
+          cat "$t"
+        fi
+        echo "---"
+      done
       read -rp "Press Enter to return to search..." _
       ;;
     *)

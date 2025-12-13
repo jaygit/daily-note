@@ -62,6 +62,9 @@ case "${OP}" in
   git)
     exec "$SCRIPT_DIR/gitnotes.sh" "$@"
     ;;
+  search)
+    exec "$SCRIPT_DIR/search.sh" "$@"
+    ;;
   hist)
     exec "$SCRIPT_DIR/histnotes.sh" "$@"
     ;;
