@@ -14,6 +14,66 @@ if ! command -v rg >/dev/null 2>&1; then
   exit 2
 fi
 
+# Diary support: allow `search.sh diary [range] [keyword]` to run the old diary functionality.
+DAILY_SUBDIR="00-Journal/00-A-Daily Notes"
+
+get_files_for_range() {
+  local range="$1" dir="$2"
+  case "$range" in
+    today)
+      date_str=$(date +%Y-%m-%d)
+      find "$dir" -type f -name "$date_str.md"
+      ;;
+    yesterday)
+      date_str=$(date -d "yesterday" +%Y-%m-%d)
+      find "$dir" -type f -name "$date_str.md"
+      ;;
+    this-month)
+      month_str=$(date +%Y-%m)
+      find "$dir" -type f -name "$month_str-*.md" | sort
+      ;;
+    last-week)
+      for i in {1..7}; do
+        d=$(date -d "$i days ago" +%Y-%m-%d)
+        find "$dir" -type f -name "$d.md"
+      done | sort
+      ;;
+    *)
+      find "$dir" -type f -name "*.md" | sort
+      ;;
+  esac
+}
+
+# detect diary mode
+MODE="interactive"
+if [ "${1:-}" = "diary" ]; then
+  MODE="diary"
+  shift || true
+fi
+
+# If diary mode and args provided, do non-interactive diary search and exit
+if [ "$MODE" = "diary" ] && [ $# -gt 0 ]; then
+  range="$1"; keyword="${2:-}"
+  dir="$VAULT_DIR/$DAILY_SUBDIR"
+  notes=$(get_files_for_range "$range" "$dir")
+  if [ -z "$notes" ]; then
+    echo "No notes found for range: $range"
+    exit 0
+  fi
+  if [ -n "$keyword" ]; then
+    notes=$(printf '%s\n' "$notes" | xargs rg -l --hidden --glob '!.git' "$keyword" 2>/dev/null || true)
+    if [ -z "$notes" ]; then
+      echo "No notes found for range '$range' containing keyword '$keyword'"
+      exit 0
+    fi
+  fi
+  # present selection with fzf (preview)
+  preview_cmd=$(print_preview_cmd)
+  selected=$(printf '%s\n' "$notes" | sed "s#^$VAULT_DIR/##" | fzf --ansi --preview "$preview_cmd" --preview-window=down:40% --prompt="Diary: $range ${keyword:+with '$keyword'} > ")
+  [ -n "$selected" ] && printf '%s\n' "$selected"
+  exit 0
+fi
+
 print_preview_cmd() {
   # Print a preview command suitable for fzf. Uses batcat/bat when available.
   if command -v batcat >/dev/null 2>&1; then
@@ -120,20 +180,5 @@ while true; do
 done
 
 echo "Exiting search."
-#!/usr/bin/env bash
 
-# Minimal bootstrap: locate `lib.sh` and source it
-SCRIPT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
-# shellcheck source=/dev/null
-source "$SCRIPT_DIR/lib.sh"
-
-if [ -z "$1" ]; then
-  echo "Usage: vault-search <query>"
-  exit 1
-fi
-
-QUERY="$1"
-
-rg --files-with-matches "$QUERY" "$VAULT_DIR" | \
-fzf --preview "rg -n --color=always -C 3 \"$QUERY\" {} | batcat --style=plain --language=markdown"
 
