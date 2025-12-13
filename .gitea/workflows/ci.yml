@@ -118,7 +118,8 @@ jobs:
           fi
 
       - name: Upload test logs
-        if: steps.ensure_gitea.outcome == 'success'
+        # Upload logs whenever the host-resolution step did not fail
+        if: steps.ensure_gitea.outcome != 'failure'
         # Use v3 of upload-artifact for GHES compatibility
         uses: actions/upload-artifact@v3
         with:
