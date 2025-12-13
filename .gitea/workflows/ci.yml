@@ -63,7 +63,8 @@ jobs:
           mkdir -p "$PWD/tests/logs"
           ls -la "$PWD/tests/logs" || true
 
-      - name: Ensure 'gitea' hostname resolves (CI host mapping)
+      - id: ensure_gitea
+        name: Ensure 'gitea' hostname resolves (CI host mapping)
         if: always()
         env:
           GITEA_HOST: "gitea"
@@ -109,7 +110,7 @@ jobs:
           fi
 
       - name: Upload test logs
-        if: always()
+        if: steps.ensure_gitea.outcome == 'success'
         # Use v3 of upload-artifact for GHES compatibility
         uses: actions/upload-artifact@v3
         with:
