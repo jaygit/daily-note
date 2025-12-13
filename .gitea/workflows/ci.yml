@@ -23,6 +23,15 @@ jobs:
           chmod +x ./scripts/*.sh || true
           chmod +x ./tests/*.sh || true
 
+      - name: Verify repository .env
+        run: |
+          if [ -f .env ]; then
+            echo ".env present in repository root"
+          else
+            echo ".env not found in repository root. CI requires a .env for runtime configuration; failing." >&2
+            exit 1
+          fi
+
       - name: Set VERSION for build
         run: |
           # Prefer env-provided VERSION, else pick latest RELEASE_NOTES/v.*.md, else git tag
@@ -57,16 +66,47 @@ jobs:
       - name: Ensure 'gitea' hostname resolves (CI host mapping)
         if: always()
         env:
-          GITEA_HOST_IP: ${{ secrets.HOST_IP }}
+          GITEA_HOST: "gitea"
+          GITEA_PORT: ${{ secrets.GITEA_PORT }}
+          HOST_IP: ${{ secrets.HOST_IP }}
         run: |
-          if [ -z "${GITEA_HOST_IP:-}" ]; then
-            echo "GITEA_HOST_IP not set; skipping hosts mapping"
+          set -euo pipefail
+          echo "Checking connectivity to ${GITEA_HOST}${GITEA_PORT:+:$GITEA_PORT}"
+          try_curl() {
+            local host="$1" port="$2"
+            if [ -n "$port" ]; then
+              curl -fsS --connect-timeout 5 "http://$host:$port" >/dev/null 2>&1 && return 0 || true
+              curl -fsS --connect-timeout 5 "https://$host:$port" >/dev/null 2>&1 && return 0 || true
+            else
+              curl -fsS --connect-timeout 5 "http://$host" >/dev/null 2>&1 && return 0 || true
+              curl -fsS --connect-timeout 5 "https://$host" >/dev/null 2>&1 && return 0 || true
+            fi
+            return 1
+          }
+
+          if try_curl "$GITEA_HOST" "$GITEA_PORT"; then
+            echo "Successfully reached $GITEA_HOST${GITEA_PORT:+:$GITEA_PORT}"
             exit 0
           fi
-          echo "Adding hosts entry: ${GITEA_HOST_IP} gitea"
-          # append mapping to /etc/hosts (requires sudo in runner)
-          sudo bash -c "echo '${GITEA_HOST_IP} gitea' >> /etc/hosts"
-          grep -F "${GITEA_HOST_IP} gitea" /etc/hosts || true
+
+          echo "Could not reach $GITEA_HOST${GITEA_PORT:+:$GITEA_PORT} via network. Checking secrets for HOST_IP..."
+          if [ -n "${HOST_IP:-}" ]; then
+            echo "HOST_IP secret present: will append to /etc/hosts"
+            echo "Adding hosts entry: ${HOST_IP} ${GITEA_HOST}"
+            sudo bash -c "echo '${HOST_IP} ${GITEA_HOST}' >> /etc/hosts"
+            grep -F "${HOST_IP} ${GITEA_HOST}" /etc/hosts || true
+            # try curl again after mapping
+            if try_curl "$GITEA_HOST" "$GITEA_PORT"; then
+              echo "Successfully reached $GITEA_HOST after hosts mapping"
+              exit 0
+            else
+              echo "Still cannot reach $GITEA_HOST after adding hosts entry" >&2
+              exit 1
+            fi
+          else
+            echo "No HOST_IP secret provided and hostname is unreachable; failing." >&2
+            exit 1
+          fi
 
       - name: Upload test logs
         if: always()
