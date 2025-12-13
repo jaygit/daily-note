@@ -100,8 +100,12 @@ jobs:
             exit 1
           fi
 
+      - name: Run tests
+        run: |
+          ./tests/run_tests.sh
+
       - name: Upload test logs
-        if: steps.ensure_host.outputs.ensure_host_status == '0'
+        if: steps.ensure_host.outputs.ensure_host_status == '-1'
         run: |
           echo "Uploading test logs (if any)"
           # create a tarball of tests/logs if it exists
@@ -112,7 +116,3 @@ jobs:
             echo "No tests/logs directory present"
           fi
         continue-on-error: true
-
-      - name: Run tests
-        run: |
-          ./tests/run_tests.sh
