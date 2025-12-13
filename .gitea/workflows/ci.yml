@@ -23,6 +23,22 @@ jobs:
           chmod +x ./scripts/*.sh || true
           chmod +x ./tests/*.sh || true
 
+      - name: Set VERSION for build
+        run: |
+          # Prefer env-provided VERSION, else pick latest RELEASE_NOTES/v.*.md, else git tag
+          if [ -n "${VERSION:-}" ]; then
+            echo "Using provided VERSION=$VERSION"
+            echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          elif ls RELEASE_NOTES/v.*.md >/dev/null 2>&1; then
+            v=$(ls RELEASE_NOTES/v.*.md | sed -E 's#.*/(v[0-9]+\.[0-9]+\.[0-9]+)\.md#\1#' | sort -V | tail -n1)
+            echo "Detected VERSION from RELEASE_NOTES: $v"
+            echo "VERSION=$v" >> "$GITHUB_ENV"
+          else
+            t=$(git describe --tags --abbrev=0 2>/dev/null || echo "v.0.0.0")
+            echo "Detected VERSION from git: $t"
+            echo "VERSION=$t" >> "$GITHUB_ENV"
+          fi
+
       - name: Run tests
         env:
           # ensure scripts use an isolated VAULT_DIR inside runner workspace
