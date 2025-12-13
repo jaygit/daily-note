@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Building obs — CLI Obsidian Companion</title>
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; max-width: 760px; margin: 3rem auto; line-height:1.6; padding: 0 1rem; color:#111 }
+    h1,h2,h3 { color:#0b5; }
+    pre { background:#f6f8fa; padding:1rem; overflow:auto }
+    code { background:#f1f1f1; padding:0 .25rem }
+    a { color:#0366d6 }
+    .meta { color:#555; font-size:0.95rem; margin-bottom:1rem }
+  </style>
+</head>
+<body>
+  <article>
+    <h1>Building obs — CLI Obsidian Companion</h1>
+    <div class="meta">Saved: 2025-12-13 &nbsp; • &nbsp; tags: journal, blog, obs</div>
+
+    <p>I wanted a lightweight, platform-agnostic way to create and manage notes from the shell — a command-line companion for Obsidian vaults that favors openness and composability. Because Obsidian stores plain Markdown in a folder, it’s naturally extensible: any CLI tool can create, edit, and link notes. This project, packaged as the <code>obs</code> helper scripts, grew from that idea.</p>
+
+    <h2>Motivation</h2>
+    <ul>
+      <li><strong>Why CLI-first:</strong> Quick capture, scripted workflows, and easy automation — the terminal remains the fastest way for me to create structured notes while I’m already in a shell environment.</li>
+      <li><strong>Why Obsidian-friendly:</strong> Obsidian’s vault is just a directory of Markdown; staying compatible keeps the data portable and editable by many tools. This openness allowed me to iterate on tooling without locking content into a closed format.</li>
+    </ul>
+
+    <h2>Design Goals</h2>
+    <ul>
+      <li>Small, composable scripts in <code>scripts/</code> (e.g., <code>create_note.sh</code>, <code>search.sh</code>, <code>gitnotes.sh</code>).</li>
+      <li>Platform-agnostic installer using XDG paths, installs only the <code>scripts/</code> tree and a tiny <code>obs</code> shim.</li>
+      <li>Persist runtime settings into <code>scripts/.env</code> so installed scripts pick up <code>VAULT_DIR</code>, <code>GIT_REMOTE_*</code>, and <code>VERSION</code>.</li>
+      <li>Pragmatic fallbacks: prefer <code>rg</code>, <code>fzf</code>, <code>bat</code> but support <code>grep</code>, <code>cat</code>, and test stubs.</li>
+      <li>Testable CI with deterministic stubs and artifact logging.</li>
+    </ul>
+
+    <h2>Step-by-step journey</h2>
+    <ol>
+      <li><strong>Basic capture and templating:</strong> <code>create_note.sh</code> generates Markdown with category-aware frontmatter, filename sanitation, and optional editor integration.</li>
+      <li><strong>Helpers & shared utilities:</strong> <code>lib.sh</code> provides prompts, sanitizers and <code>load_dotenv()</code>.</li>
+      <li><strong>Interactive search and previews:</strong> <code>search.sh</code> wires <code>rg</code> + <code>fzf</code> + <code>bat</code> into a fuzzy-search UI with diary mode and fallbacks.</li>
+      <li><strong>Git integration:</strong> <code>gitnotes.sh</code> manages vault-scoped commits and remote interactions.</li>
+      <li><strong>Tests:</strong> shell tests under <code>tests/</code> with deterministic stubs for CI.</li>
+      <li><strong>Installer:</strong> XDG-aware <code>install.sh</code> persists <code>VERSION</code>, creates an <code>obs</code> shim and supports <code>--uninstall</code>.</li>
+      <li><strong>CI hardening & releases:</strong> workflow fixes, host-resolution fallbacks, and release/tag discovery from <code>RELEASE_NOTES</code>.</li>
+    </ol>
+
+    <h2>Future directions</h2>
+    <ul>
+      <li>Plugin hooks for post-create actions (auto-tagging, external indexing).</li>
+      <li>Richer frontmatter templates and community templates.</li>
+      <li>Smarter merge/conflict helpers for collaboration.</li>
+      <li>Graph/metadata export (JSON/SQLite) for local indices.</li>
+      <li>Minimal GUI bridges wrapping the CLI for mouse-driven workflows.</li>
+    </ul>
+
+    <h2>How to reuse</h2>
+    <ul>
+      <li>Edit <code>scripts/.env</code> after installing to change <code>VAULT_DIR</code> or remote config.</li>
+      <li>Override <code>FZF_CMD</code> for deterministic tests.</li>
+    </ul>
+
+    <p class="meta">Generated for publication — save date: 2025-12-13</p>
+  </article>
+</body>
+</html>
