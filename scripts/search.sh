@@ -44,6 +44,16 @@ get_files_for_range() {
   esac
 }
 
+print_preview_cmd() {
+  # Print a preview command suitable for fzf. Uses batcat/bat when available.
+  if command -v batcat >/dev/null 2>&1; then
+    printf 'rg -n --color=always -C 3 "%s" {} | batcat --style=plain --paging=never --language=markdown'
+  elif command -v bat >/dev/null 2>&1; then
+    printf 'rg -n --color=always -C 3 "%s" {} | bat --style=plain --paging=never --language=markdown'
+  else
+    printf 'rg -n --color=always -C 3 "%s" {}'
+  fi
+  }
 # detect diary mode
 MODE="interactive"
 if [ "${1:-}" = "diary" ]; then
@@ -67,24 +77,15 @@ if [ "$MODE" = "diary" ] && [ $# -gt 0 ]; then
       exit 0
     fi
   fi
-  # present selection with fzf (preview)
-  preview_cmd=$(print_preview_cmd)
-  selected=$(printf '%s\n' "$notes" | sed "s#^$VAULT_DIR/##" | fzf --ansi --preview "$preview_cmd" --preview-window=down:40% --prompt="Diary: $range ${keyword:+with '$keyword'} > ")
+    # present selection with fzf (preview) — allow FZF_CMD override for tests
+    preview_cmd=$(print_preview_cmd)
+    FZF_CMD="${FZF_CMD:-fzf}"
+    selected=$(printf '%s\n' "$notes" | sed "s#^$VAULT_DIR/##" | "$FZF_CMD" --ansi --preview "$preview_cmd" --preview-window=down:40% --prompt="Diary: $range ${keyword:+with '$keyword'} > ")
   [ -n "$selected" ] && printf '%s\n' "$selected"
   exit 0
 fi
 
-print_preview_cmd() {
-  # Print a preview command suitable for fzf. Uses batcat/bat when available.
-  if command -v batcat >/dev/null 2>&1; then
-    printf 'rg -n --color=always -C 3 "%s" {} | batcat --style=plain --paging=never --language=markdown'
-  elif command -v bat >/dev/null 2>&1; then
-    printf 'rg -n --color=always -C 3 "%s" {} | bat --style=plain --paging=never --language=markdown'
-  else
-    printf 'rg -n --color=always -C 3 "%s" {}'
-  fi
-}
-
+ 
 while true; do
   # Use gum-aware ask() from lib.sh which falls back to read -p
   query=$(ask 'Enter search query (empty to exit)' '')
@@ -102,10 +103,11 @@ while true; do
   # Prepare fzf preview command
   preview_cmd=$(print_preview_cmd)
 
-  if command -v fzf >/dev/null 2>&1; then
+  FZF_CMD="${FZF_CMD:-fzf}"
+  if command -v "$FZF_CMD" >/dev/null 2>&1 2>/dev/null || [ -x "$FZF_CMD" ]; then
     # Run fzf with a preview (relative paths are nicer). Allow multi-select.
     cd "$VAULT_DIR" || true
-    selected_raw=$(printf '%s\n' "${results[@]}" | sed "s#^$VAULT_DIR/##" | fzf --ansi --multi --preview "$preview_cmd" --preview-window=right:60% --prompt="Search: $query > ")
+    selected_raw=$(printf '%s\n' "${results[@]}" | sed "s#^$VAULT_DIR/##" | "$FZF_CMD" --ansi --multi --preview "$preview_cmd" --preview-window=right:60% --prompt="Search: $query > ")
     # restore cwd
     cd - >/dev/null 2>&1 || true
     # convert raw selection (possibly multiline) into array
