@@ -37,6 +37,29 @@ else
   USE_GUM=false
 fi
 
+# Detect availability of common tools and expose variables so other scripts/tests
+# can decide to use fallbacks instead of failing. Do NOT mask or replace these
+# commands; just advertise availability via exported vars.
+if command -v fzf >/dev/null 2>&1; then
+	FZF_AVAILABLE=true
+else
+	FZF_AVAILABLE=false
+fi
+
+if command -v rg >/dev/null 2>&1; then
+	RG_AVAILABLE=true
+else
+	RG_AVAILABLE=false
+fi
+
+if command -v batcat >/dev/null 2>&1 || command -v bat >/dev/null 2>&1; then
+	BAT_AVAILABLE=true
+else
+	BAT_AVAILABLE=false
+fi
+
+export FZF_AVAILABLE RG_AVAILABLE BAT_AVAILABLE
+
 # If the vault directory exists, change into it; otherwise do not exit (helps tests create the directory)
 if [ -n "$VAULT_DIR" ] && [ -d "$VAULT_DIR" ]; then
 	cd "$VAULT_DIR" || exit 1

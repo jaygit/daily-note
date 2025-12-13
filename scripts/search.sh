@@ -9,9 +9,14 @@ SCRIPT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
 # shellcheck source=/dev/null
 source "$SCRIPT_DIR/lib.sh"
 
-if ! command -v rg >/dev/null 2>&1; then
-  echo "Error: ripgrep (rg) is required for search." >&2
-  exit 2
+# Prefer ripgrep (`rg`) but fall back to `grep` when `rg` isn't available.
+# `RG_HAS=true` indicates rg is present; otherwise we use `grep` fallback.
+if command -v rg >/dev/null 2>&1; then
+  RG_CMD=rg
+  RG_HAS=true
+else
+  RG_CMD=grep
+  RG_HAS=false
 fi
 
 # Diary support: allow `search.sh diary [range] [keyword]` to run the old diary functionality.
@@ -45,15 +50,29 @@ get_files_for_range() {
 }
 
 print_preview_cmd() {
-  # Print a preview command suitable for fzf. Uses batcat/bat when available.
+  # Print a preview command suitable for fzf. Use batcat/bat when available.
+  # Handle rg vs grep differences: when rg is present we use its colorized output;
+  # otherwise fall back to grep with similar flags.
   if command -v batcat >/dev/null 2>&1; then
-    printf 'rg -n --color=always -C 3 "%s" {} | batcat --style=plain --paging=never --language=markdown'
+    if [ "$RG_HAS" = true ]; then
+      printf 'rg -n --color=always -C 3 "%s" {} | batcat --style=plain --paging=never --language=markdown'
+    else
+      printf 'grep -n -C 3 "%s" {} | batcat --style=plain --paging=never --language=markdown'
+    fi
   elif command -v bat >/dev/null 2>&1; then
-    printf 'rg -n --color=always -C 3 "%s" {} | bat --style=plain --paging=never --language=markdown'
+    if [ "$RG_HAS" = true ]; then
+      printf 'rg -n --color=always -C 3 "%s" {} | bat --style=plain --paging=never --language=markdown'
+    else
+      printf 'grep -n -C 3 "%s" {} | bat --style=plain --paging=never --language=markdown'
+    fi
   else
-    printf 'rg -n --color=always -C 3 "%s" {}'
+    if [ "$RG_HAS" = true ]; then
+      printf 'rg -n --color=always -C 3 "%s" {}'
+    else
+      printf 'grep -n -C 3 "%s" {}'
+    fi
   fi
-  }
+}
 # detect diary mode
 MODE="interactive"
 if [ "${1:-}" = "diary" ]; then
@@ -71,7 +90,11 @@ if [ "$MODE" = "diary" ] && [ $# -gt 0 ]; then
     exit 0
   fi
   if [ -n "$keyword" ]; then
-    notes=$(printf '%s\n' "$notes" | xargs rg -l --hidden --glob '!.git' "$keyword" 2>/dev/null || true)
+    if [ "$RG_HAS" = true ]; then
+      notes=$(printf '%s\n' "$notes" | xargs rg -l --hidden --glob '!.git' "$keyword" 2>/dev/null || true)
+    else
+      notes=$(printf '%s\n' "$notes" | xargs -r grep -l --line-number -- "$keyword" 2>/dev/null || true)
+    fi
     if [ -z "$notes" ]; then
       echo "No notes found for range '$range' containing keyword '$keyword'"
       exit 0
@@ -93,7 +116,12 @@ while true; do
   [ -n "$query" ] || break
 
   # Find files with matches under VAULT_DIR
-  mapfile -t results < <(rg --files-with-matches --hidden --glob '!.git' -- "$query" "$VAULT_DIR" 2>/dev/null || true)
+  if [ "$RG_HAS" = true ]; then
+    mapfile -t results < <(rg --files-with-matches --hidden --glob '!.git' -- "$query" "$VAULT_DIR" 2>/dev/null || true)
+  else
+    # grep fallback: list files containing the query under VAULT_DIR (exclude .git)
+    mapfile -t results < <(grep -R -l --exclude-dir=.git -- "$query" "$VAULT_DIR" 2>/dev/null || true)
+  fi
 
   if [ "${#results[@]}" -eq 0 ]; then
     echo "No matches for: $query"
