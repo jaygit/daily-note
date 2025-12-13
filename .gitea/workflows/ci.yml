@@ -41,87 +41,86 @@ jobs:
               elif [ -n "${CI_SERVER_URL:-}" ]; then
                 TARGET_HOST=$(echo "$CI_SERVER_URL" | sed -E 's#https?://##' | sed -E 's#/.*$##')
               else
-                TARGET_HOST="gitea"
-              fi
+                - name: Make scripts executable
+                  run: |
+                    chmod +x ./scripts/*.sh || true
+                    chmod +x ./tests/*.sh || true
 
-              echo "Target host resolved to: $TARGET_HOST"
+                - id: ensure_gitea
+                  name: Ensure CI server hostname resolves (host mapping)
+                  if: always()
+                  env:
+                    HOST_IP: ${{ secrets.HOST_IP }}
+                    HOST_PORT: ${{ secrets.HOST_PORT }}
+                  run: |
+                    # Don't set -e so we can always print debug output before exiting
+                    set -uo pipefail
 
-              try_curl() {
-                local host="$1" port="$2"
-                if [ -n "$port" ]; then
-                  curl -fsS --connect-timeout 5 "http://$host:$port" >/dev/null 2>&1 && return 0 || true
-                  curl -fsS --connect-timeout 5 "https://$host:$port" >/dev/null 2>&1 && return 0 || true
-                else
-                  curl -fsS --connect-timeout 5 "http://$host" >/dev/null 2>&1 && return 0 || true
-                  curl -fsS --connect-timeout 5 "https://$host" >/dev/null 2>&1 && return 0 || true
-                fi
-                return 1
-              }
+                    # Determine target hostname from CI-provided variables (prefer provider URLs)
+                    TARGET_HOST=""
+                    if [ -n "${GITHUB_SERVER_URL:-}" ]; then
+                      TARGET_HOST=$(echo "$GITHUB_SERVER_URL" | sed -E 's#https?://##' | sed -E 's#/.*$##')
+                    elif [ -n "${GITEA_SERVER:-}" ]; then
+                      TARGET_HOST=$(echo "$GITEA_SERVER" | sed -E 's#https?://##' | sed -E 's#/.*$##')
+                    elif [ -n "${GITEA_SERVER_URL:-}" ]; then
+                      TARGET_HOST=$(echo "$GITEA_SERVER_URL" | sed -E 's#https?://##' | sed -E 's#/.*$##')
+                    elif [ -n "${CI_SERVER_URL:-}" ]; then
+                      TARGET_HOST=$(echo "$CI_SERVER_URL" | sed -E 's#https?://##' | sed -E 's#/.*$##')
+                    else
+                      TARGET_HOST="gitea"
+                    fi
 
-              status=1
-              debug_msg=""
+                    echo "Target host resolved to: $TARGET_HOST"
 
-              echo "Checking connectivity to ${TARGET_HOST}${HOST_PORT:+:$HOST_PORT}"
-              if try_curl "$TARGET_HOST" "${HOST_PORT:-}"; then
-                status=0
-                debug_msg="reached"
-              else
-                echo "Could not reach $TARGET_HOST via network. Checking secrets for HOST_IP..."
-                if [ -n "${HOST_IP:-}" ]; then
-                  echo "HOST_IP secret present: will append to /etc/hosts"
-                  echo "Adding hosts entry: ${HOST_IP} ${TARGET_HOST}"
-                  sudo bash -c "echo '${HOST_IP} ${TARGET_HOST}' >> /etc/hosts"
-                  grep -F "${HOST_IP} ${TARGET_HOST}" /etc/hosts || true
-                  if try_curl "$TARGET_HOST" "${HOST_PORT:-}"; then
-                    status=0
-                    debug_msg="reached-after-hosts-mapping"
-                  else
-                    status=2
-                    debug_msg="unreachable-after-hosts-mapping"
-                  fi
-                else
-                  status=3
-                  debug_msg="no-host-ip-secret"
-                fi
-              fi
+                    try_curl() {
+                      local host="$1" port="$2"
+                      if [ -n "$port" ]; then
+                        curl -fsS --connect-timeout 5 "http://$host:$port" >/dev/null 2>&1 && return 0 || true
+                        curl -fsS --connect-timeout 5 "https://$host:$port" >/dev/null 2>&1 && return 0 || true
+                      else
+                        curl -fsS --connect-timeout 5 "http://$host" >/dev/null 2>&1 && return 0 || true
+                        curl -fsS --connect-timeout 5 "https://$host" >/dev/null 2>&1 && return 0 || true
+                      fi
+                      return 1
+                    }
 
-              # Emit debug output and set step outputs
-              echo "ensure_gitea_target=$TARGET_HOST" >> "$GITHUB_OUTPUT" || true
-              echo "ensure_gitea_host_ip=${HOST_IP:-}" >> "$GITHUB_OUTPUT" || true
-              echo "ensure_gitea_host_port=${HOST_PORT:-}" >> "$GITHUB_OUTPUT" || true
-              echo "ensure_gitea_status=$status" >> "$GITHUB_OUTPUT" || true
-              echo "DEBUG: ensure_gitea target=$TARGET_HOST host_ip=${HOST_IP:-} port=${HOST_PORT:-} status=$status message=$debug_msg"
+                    status=1
+                    debug_msg=""
 
-              if [ "$status" -eq 0 ]; then
-                exit 0
-              else
-                exit 1
-              fi
+                    echo "Checking connectivity to ${TARGET_HOST}${HOST_PORT:+:$HOST_PORT}"
+                    if try_curl "$TARGET_HOST" "${HOST_PORT:-}"; then
+                      status=0
+                      debug_msg="reached"
+                    else
+                      echo "Could not reach $TARGET_HOST via network. Checking secrets for HOST_IP..."
+                      if [ -n "${HOST_IP:-}" ]; then
+                        echo "HOST_IP secret present: will append to /etc/hosts"
+                        echo "Adding hosts entry: ${HOST_IP} ${TARGET_HOST}"
+                        sudo bash -c "echo '${HOST_IP} ${TARGET_HOST}' >> /etc/hosts"
+                        grep -F "${HOST_IP} ${TARGET_HOST}" /etc/hosts || true
+                        if try_curl "$TARGET_HOST" "${HOST_PORT:-}"; then
+                          status=0
+                          debug_msg="reached-after-hosts-mapping"
+                        else
+                          status=2
+                          debug_msg="unreachable-after-hosts-mapping"
+                        fi
+                      else
+                        status=3
+                        debug_msg="no-host-ip-secret"
+                      fi
+                    fi
 
-          echo "Could not reach $TARGET_HOST via network. Checking secrets for HOST_IP..."
-          if [ -n "${HOST_IP:-}" ]; then
-            echo "HOST_IP secret present: will append to /etc/hosts"
-            echo "Adding hosts entry: ${HOST_IP} ${TARGET_HOST}"
-            sudo bash -c "echo '${HOST_IP} ${TARGET_HOST}' >> /etc/hosts"
-            grep -F "${HOST_IP} ${TARGET_HOST}" /etc/hosts || true
-            # try curl again after mapping
-            if try_curl "$TARGET_HOST" "${HOST_PORT:-}"; then
-              echo "Successfully reached $TARGET_HOST after hosts mapping"
-              exit 0
-            else
-              echo "Still cannot reach $TARGET_HOST after adding hosts entry" >&2
-              exit 1
-            fi
-          else
-            echo "No HOST_IP secret provided and hostname is unreachable; failing." >&2
-            exit 1
-          fi
+                    # Emit debug output and set step outputs
+                    echo "ensure_gitea_target=$TARGET_HOST" >> "$GITHUB_OUTPUT" || true
+                    echo "ensure_gitea_host_ip=${HOST_IP:-}" >> "$GITHUB_OUTPUT" || true
+                    echo "ensure_gitea_host_port=${HOST_PORT:-}" >> "$GITHUB_OUTPUT" || true
+                    echo "ensure_gitea_status=$status" >> "$GITHUB_OUTPUT" || true
+                    echo "DEBUG: ensure_gitea target=$TARGET_HOST host_ip=${HOST_IP:-} port=${HOST_PORT:-} status=$status message=$debug_msg"
 
-      - name: Upload test logs
-        # Upload logs whenever the host-resolution step did not fail
-        if: steps.ensure_gitea.outcome != 'failure'
-        # Use v3 of upload-artifact for GHES compatibility
-        uses: actions/upload-artifact@v3
-        with:
+                    if [ "$status" -eq 0 ]; then
+                      exit 0
+                    else
+                      exit 1
+                    fi
           name: test-logs
-          path: tests/logs/**
