@@ -40,23 +40,72 @@ copy_package() {
   fi
 }
 
-copy_package "$PKG_ROOT" "$PREFIX_DIR"
+## Only install the scripts directory into the prefix
+echo "Copying scripts to: $SCRIPTS_DIR"
+mkdir -p "$SCRIPTS_DIR"
+if [ "$RSYNC_AVAILABLE" = true ]; then
+  rsync -a --exclude '.env' "$PKG_ROOT/scripts/" "$SCRIPTS_DIR/"
+else
+  cp -a "$PKG_ROOT/scripts/." "$SCRIPTS_DIR/" || true
+fi
 
-chmod -R u+rwX,go+rX "$PREFIX_DIR"
+chmod -R u+rwX,go+rX "$SCRIPTS_DIR"
 
 # Ensure main script is executable
 if [ -f "$SCRIPTS_DIR/main.sh" ]; then
   chmod +x "$SCRIPTS_DIR/main.sh"
 fi
 
-# Create `obs` shim in user local bin
+# Create `obs` shim in user local bin. The shim supports `--uninstall` which
+# will remove the installed scripts, shim and manpage and report what was
+# removed. The shim uses the absolute paths chosen at install time.
 OBS_SHIM="$XDG_BIN_HOME/obs"
 echo "Creating shim: $OBS_SHIM -> $SCRIPTS_DIR/main.sh"
 cat > "$OBS_SHIM" <<EOF
 #!/usr/bin/env bash
+SCRIPTS_DIR="$SCRIPTS_DIR"
+PREFIX_DIR="$PREFIX_DIR"
+MANPAGE="$PREFIX_DIR/share/man/man1/obs.1"
+OBS_SHIM="$OBS_SHIM"
+
+if [ "${1:-}" = "--uninstall" ]; then
+  echo "Uninstalling obs from: $PREFIX_DIR"
+  removed=()
+  if [ -d "$SCRIPTS_DIR" ]; then
+    removed+=("$SCRIPTS_DIR")
+    rm -rf "$SCRIPTS_DIR"
+  fi
+  if [ -f "$MANPAGE" ]; then
+    removed+=("$MANPAGE")
+    rm -f "$MANPAGE"
+    # attempt to remove parent man dir if empty
+    rmdir --ignore-fail-on-non-empty "$(dirname "$MANPAGE")" 2>/dev/null || true
+  fi
+  if [ -f "$OBS_SHIM" ]; then
+    removed+=("$OBS_SHIM")
+    rm -f "$OBS_SHIM"
+  fi
+  if [ ${#removed[@]} -eq 0 ]; then
+    echo "Nothing to remove. Nothing found at expected locations."
+    exit 0
+  fi
+  echo "Removed the following files/directories:"
+  for f in "${removed[@]}"; do
+    echo " - $f"
+  done
+  exit 0
+fi
+
 exec "$SCRIPTS_DIR/main.sh" "\$@"
 EOF
 chmod +x "$OBS_SHIM"
+
+# Notify user if $XDG_BIN_HOME is not in PATH
+if ! printf '%s' ":$PATH:" | grep -q ":$XDG_BIN_HOME:"; then
+  echo
+  echo "Note: $XDG_BIN_HOME is not in your PATH. To make 'obs' available add:" 
+  echo "  export PATH=\"$XDG_BIN_HOME:\\$PATH\""
+fi
 
 # Prepare .env in scripts dir so lib.sh will find it when installed
 ENV_FILE="$SCRIPTS_DIR/.env"
@@ -230,5 +279,30 @@ if [ ${#missing[@]} -gt 0 ]; then
   printf ' - %s\n' "${missing[@]}"
   echo "Install them via your package manager (apt, yum, brew, etc.) for full functionality."
 fi
+
+# Install a minimal manpage for `obs` under the prefix so users can add it to
+# their MANPATH if they wish. This is optional but useful for completion.
+MAN_DIR="$PREFIX_DIR/share/man/man1"
+mkdir -p "$MAN_DIR"
+cat > "$MAN_DIR/obs.1" <<'MAN'
+.TH obs 1 "2025-12-13" "daily-note"
+.SH NAME
+obs \- helper shim for daily-note
+.SH SYNOPSIS
+.B obs
+[\-\-uninstall]
+.SH DESCRIPTION
+obs is a tiny shim that dispatches to the daily-note scripts installed
+under the user's data prefix. Use
+.B obs \-\-uninstall
+to remove installed files created by the installer.
+.SH NOTES
+The manpage is installed under the user prefix; add the prefix man directory
+to your MANPATH if you want "man obs" to find it.
+MAN
+
+echo
+echo "Manpage installed to: $MAN_DIR/obs.1"
+echo "Add $PREFIX_DIR/share/man to your MANPATH (or run 'man -M $PREFIX_DIR/share/man obs')."
 
 exit 0
