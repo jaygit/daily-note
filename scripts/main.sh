@@ -6,6 +6,7 @@ SCRIPT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
 source "$SCRIPT_DIR/lib.sh"
 
 usage() {
+  local exit_code=${1:-1}
   cat <<EOF
 Usage: $0 -o <operation> [--] [args...]
 
@@ -18,15 +19,12 @@ Examples:
   $0 -o job -- -c "Bearing" -s
   $0 -o note -- -t "My Note"
 EOF
-  exit 1
+  exit "$exit_code"
 }
 
-  diary)
-    exec "$SCRIPT_DIR/search.sh" diary "$@"
-    ;;
-# No args -> help
+# No args -> show help (successful)
 if [ $# -eq 0 ]; then
-  usage
+  usage 0
 fi
 
 OP=""
@@ -36,13 +34,13 @@ OP=""
 while getopts ":o:h-:" opt; do
   if [ "$opt" = "-" ]; then
     case "$OPTARG" in
-      help) usage ;;
+      help) usage 0 ;;
       *) echo "Unknown option: --$OPTARG" >&2; usage ;;
     esac
   else
     case "$opt" in
       o) OP="$OPTARG" ;;
-      h) usage ;;
+      h) usage 0 ;;
       \?) echo "Invalid option: -$OPTARG" >&2; usage ;;
       :) echo "Option -$OPTARG requires an argument." >&2; usage ;;
     esac
@@ -67,6 +65,9 @@ case "${OP}" in
     ;;
   search)
     exec "$SCRIPT_DIR/search.sh" "$@"
+    ;;
+  diary)
+    exec "$SCRIPT_DIR/search.sh" diary "$@"
     ;;
   hist)
     exec "$SCRIPT_DIR/histnotes.sh" "$@"
