@@ -5,6 +5,41 @@ SCRIPT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
 # shellcheck source=/dev/null
 source "$SCRIPT_DIR/lib.sh"
 
+# Print discovered version. Lookup order:
+# 1. env var VERSION
+# 2. RELEASE_NOTES/v.*.md files (pick highest via sort -V)
+# 3. git tag (closest annotated/tag)
+# 4. fallback 'unknown'
+get_version() {
+  if [ -n "${VERSION:-}" ]; then
+    printf '%s\n' "$VERSION"
+    return 0
+  fi
+  # check RELEASE_NOTES directory relative to repo root
+  if compgen -G "$SCRIPT_DIR/../RELEASE_NOTES/v.*.md" >/dev/null 2>&1; then
+    ver=$(ls "$SCRIPT_DIR/../RELEASE_NOTES"/v.*.md 2>/dev/null | xargs -n1 basename | sed 's/\.md$//' | sort -V | tail -n1)
+    if [ -n "$ver" ]; then
+      printf '%s\n' "$ver"
+      return 0
+    fi
+  fi
+  # try git tag
+  if git -C "$SCRIPT_DIR/.." rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    git describe --tags --abbrev=0 2>/dev/null && return 0
+  fi
+  printf 'unknown\n'
+}
+
+# Support -v / --version early so `obs -v` or `obs --version` works.
+for a in "$@"; do
+  case "$a" in
+    -v|--version)
+      get_version
+      exit 0
+      ;;
+  esac
+done
+
 usage() {
   local exit_code=${1:-1}
   cat <<EOF
