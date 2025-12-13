@@ -28,7 +28,7 @@ jobs:
         env:
           GITEA_HOST_IP: ${{ secrets.HOST_IP }}
         run: |
-          echo "HOST_IP ${GITEA_HOST_IP:-}
+          echo "HOST_IP ${GITEA_HOST_IP:-}"
           if [ -z "${GITEA_HOST_IP:-}" ]; then
             echo "GITEA_HOST_IP not set; skipping hosts mapping"
             exit 0
