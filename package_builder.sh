@@ -2,8 +2,23 @@
 set -euo pipefail
 
 # Build a tar.gz package containing scripts, tests, README, release notes, install.sh and samples/
-VERSION="v.1.0.0"
+# VERSION is taken from $VERSION env or the latest RELEASE_NOTES/v.*.md file or git tag
 DIST_DIR="dist"
+
+if [ -n "${VERSION:-}" ]; then
+	echo "Using VERSION from environment: $VERSION"
+else
+	if ls RELEASE_NOTES/v.*.md >/dev/null 2>&1; then
+		# pick the highest semantic version by numeric sort
+		VERSION=$(ls RELEASE_NOTES/v.*.md | sed -E 's#.*/(v[0-9]+\.[0-9]+\.[0-9]+)\.md#\1#' | sort -V | tail -n1)
+		echo "Discovered VERSION from RELEASE_NOTES: $VERSION"
+	else
+		# fallback to latest git tag, or default
+		VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v.0.0.0")
+		echo "Using VERSION from git or fallback: $VERSION"
+	fi
+fi
+
 STAGING="$DIST_DIR/daily-notes-$VERSION"
 
 rm -rf "$STAGING"
@@ -14,7 +29,12 @@ cp -a scripts "$STAGING/"
 cp -a tests "$STAGING/"
 cp README.md "$STAGING/"
 mkdir -p "$STAGING/RELEASE_NOTES"
-cp RELEASE_NOTES/v.1.0.0.md "$STAGING/RELEASE_NOTES/"
+if [ -f "RELEASE_NOTES/${VERSION}.md" ]; then
+	cp "RELEASE_NOTES/${VERSION}.md" "$STAGING/RELEASE_NOTES/"
+else
+	# if exact release note missing, copy all release notes as fallback
+	cp -a RELEASE_NOTES/* "$STAGING/RELEASE_NOTES/" || true
+fi
 cp install.sh "$STAGING/"
 
 # create samples
