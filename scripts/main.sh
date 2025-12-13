@@ -10,7 +10,7 @@ usage() {
 Usage: $0 -o <operation> [--] [args...]
 
 Options:
-  -o <op>      Operation to run. One of: job, note, git, hist
+  -o <op>      Operation to run. One of: job, note, git, hist, search, diary
   -h, --help   Show this help and exit
 
 Any remaining args after the options are passed to the chosen script.
@@ -21,6 +21,9 @@ EOF
   exit 1
 }
 
+  diary)
+    exec "$SCRIPT_DIR/search.sh" diary "$@"
+    ;;
 # No args -> help
 if [ $# -eq 0 ]; then
   usage
