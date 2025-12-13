@@ -42,6 +42,11 @@ Behavior:
 ## Other scripts
 - `scripts/jobs.sh` — Helpers for job notes and quick status updates.
 - `scripts/gitnotes.sh` — Git helpers for the vault.
+  - Usage: `scripts/gitnotes.sh <status|pull|commit>`
+    - `status`: show local vs `gitea` remote status for vault files
+    - `pull`: pull newer changes from `gitea` (fast-forward only by default)
+    - `commit`: commit vault changes with a descriptive message and push to `gitea`
+  - Notes: The script focuses only on changes under the vault directory (as set by `VAULT_DIR`). It includes host and timestamp information in commit messages and presents clear options when local and remote have diverged.
 - `scripts/histnotes.sh` — History and archive helpers.
 - `scripts/follow_links.sh` — Extracts wiki links from a note and lets you open/select them with `fzf`.
 

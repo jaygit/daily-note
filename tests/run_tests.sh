@@ -41,6 +41,7 @@ run_test() {
 run_test "$ROOT_DIR/tests/test_jobs.sh"
 run_test "$ROOT_DIR/tests/test_create_note.sh"
 run_test "$ROOT_DIR/tests/test_dotenv.sh"
+run_test "$ROOT_DIR/tests/test_gitnotes.sh"
 
 # cleanup test helpers
 if declare -f test_lib_cleanup >/dev/null 2>&1; then
