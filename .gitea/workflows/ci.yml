@@ -105,7 +105,7 @@ jobs:
           ./tests/run_tests.sh
 
       - name: Upload test logs
-        if: steps.ensure_host.outputs.ensure_host_status == '-1'
+        if: always()
         run: |
           echo "Uploading test logs (if any)"
           # create a tarball of tests/logs if it exists
