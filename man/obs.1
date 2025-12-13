@@ -1,0 +1,77 @@
+.TH obs 1 "2025-12-13" "daily-note"
+.SH NAME
+obs \- command dispatcher for daily-note scripts
+.SH SYNOPSIS
+.B obs
+[\-\-uninstall]
+.BR -o " <operation> " [ -- ] [ args... ]
+.BR -h , " --help"
+
+.SH DESCRIPTION
+.B obs
+is a small command dispatcher that invokes the helper scripts installed
+by the daily-note package. It accepts a single operation via
+.BR -o " <operation> " and forwards any remaining arguments to the
+corresponding script.
+
+The following operations are supported:
+.TP
+.BR job
+Manage job-related notes (add/query job notes). See jobs(1).
+.TP
+.BR note
+Create various note types (journal, training, zettelkasten). See create_note(1).
+.TP
+.BR git
+Synchronise or inspect vault git repository (gitnotes). See gitnotes(1).
+.TP
+.BR search
+Interactive search across the vault (search). See search(1).
+.TP
+.BR diary
+Diary helpers (shortcut to daily notes search). Equivalent to: \fBobs -o search -- diary\fR.
+.TP
+.BR hist
+History utilities for notes (histnotes). See histnotes(1).
+
+.SH OPTIONS
+.TP
+.BR -o " <operation>"
+Specify the operation to run. Required.
+.TP
+.BR -h , " --help"
+Show this help and exit.
+.TP
+.BR --uninstall
+When invoked as the installed shim (\fBobs\fR), delegates to the installer to
+remove installed files (scripts, shim and manpage). Use with care.
+
+.SH EXAMPLES
+.TP
+Run the job add flow interactively
+.RS
+.nf
+obs -o job -- -a -j "SRE" -c "ExampleCorp"
+.fi
+.RE
+.TP
+Open interactive search
+.RS
+.nf
+obs -o search
+.fi
+.RE
+
+.SH FILES
+.BR $XDG_DATA_HOME/daily-note/scripts/ 
+Install location for the helper scripts (example: ~/.local/share/daily-note/scripts/).
+.BR $XDG_BIN_HOME/obs
+Installed shim (example: ~/.local/bin/obs).
+.BR $XDG_DATA_HOME/daily-note/share/man/man1/obs.1
+Installed manpage location (add to MANPATH to use with man).
+
+.SH SEE ALSO
+jobs(1), create_note(1), gitnotes(1), search(1), histnotes(1)
+
+.SH AUTHOR
+Daily-note project

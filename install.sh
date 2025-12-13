@@ -294,13 +294,18 @@ fi
 # their MANPATH if they wish. This is optional but useful for completion.
 MAN_DIR="$PREFIX_DIR/share/man/man1"
 mkdir -p "$MAN_DIR"
-cat > "$MAN_DIR/obs.1" <<'MAN'
+# Prefer installing the static manpage shipped in the package if present.
+if [ -f "$PKG_ROOT/man/obs.1" ]; then
+  cp "$PKG_ROOT/man/obs.1" "$MAN_DIR/obs.1"
+else
+  # Fallback: write a minimal manpage
+  cat > "$MAN_DIR/obs.1" <<'MAN'
 .TH obs 1 "2025-12-13" "daily-note"
 .SH NAME
 obs \- helper shim for daily-note
 .SH SYNOPSIS
 .B obs
-[\-\-uninstall]
+[-\-uninstall]
 .SH DESCRIPTION
 obs is a tiny shim that dispatches to the daily-note scripts installed
 under the user's data prefix. Use
@@ -310,6 +315,7 @@ to remove installed files created by the installer.
 The manpage is installed under the user prefix; add the prefix man directory
 to your MANPATH if you want "man obs" to find it.
 MAN
+fi
 
 echo
 echo "Manpage installed to: $MAN_DIR/obs.1"
