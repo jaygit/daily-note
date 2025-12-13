@@ -104,15 +104,27 @@ jobs:
         run: |
           ./tests/run_tests.sh
 
-      - name: Upload test logs
+      - name: Prepare test logs
         if: always()
         run: |
-          echo "Uploading test logs (if any)"
-          # create a tarball of tests/logs if it exists
+          echo "Preparing test logs (if any)"
+          # create a tarball of tests/logs if it exists; otherwise create a small placeholder tarball
           if [ -d tests/logs ]; then
             tar czf test-logs.tar.gz -C tests logs || true
             ls -l test-logs.tar.gz || true
           else
-            echo "No tests/logs directory present"
+            echo "No tests/logs directory present — creating placeholder tarball"
+            mkdir -p .artifacts_placeholder
+            echo "no test logs" > .artifacts_placeholder/README.txt
+            tar czf test-logs.tar.gz -C .artifacts_placeholder README.txt || true
+            ls -l test-logs.tar.gz || true
           fi
+        continue-on-error: true
+
+      - name: Upload test logs artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: test-logs.tar.gz
         continue-on-error: true
