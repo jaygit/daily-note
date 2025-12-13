@@ -32,6 +32,53 @@ awk 'NF{print; exit}'
 FZFSH
 chmod +x "$FZF_STUB"
 
+# If ripgrep (`rg`) is not available in the test container, provide a minimal
+# shim that maps common `rg` calls used by the scripts to `grep`. This keeps
+# tests runnable in lightweight containers.
+if ! command -v rg >/dev/null 2>&1; then
+  RG_SHIM_DIR="$TMPDIR/bin"
+  mkdir -p "$RG_SHIM_DIR"
+  cat > "$RG_SHIM_DIR/rg" <<'RGSH'
+#!/usr/bin/env bash
+# Minimal rg shim: handle --files-with-matches, --hidden, --glob '!.git', -n
+mode="normal"
+args=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --files-with-matches)
+      mode="files"
+      shift
+      ;;
+    --hidden)
+      shift
+      ;;
+    --glob)
+      # skip the glob pattern argument
+      shift; shift || true
+      ;;
+    --line-number|-n)
+      args+=("-n"); shift ;;
+    --)
+      shift; break ;;
+    *)
+      args+=("$1"); shift ;;
+  esac
+done
+# Remaining args: pattern [files...]
+pattern="$1"; shift || true
+if [ "$mode" = "files" ]; then
+  dir="${1:-.}"
+  # Use grep -R -l excluding .git
+  grep -R -l --exclude-dir=.git -- "$pattern" "$dir" || true
+else
+  # Generic grep fallback
+  grep "${args[@]}" -- "$pattern" "$@" || true
+fi
+RGSH
+  chmod +x "$RG_SHIM_DIR/rg"
+  export PATH="$RG_SHIM_DIR:$PATH"
+fi
+
 export FZF_CMD="$FZF_STUB"
 export VAULT_DIR="$VAULT"
 
