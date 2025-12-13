@@ -22,6 +22,8 @@ Commands:
   status   Show vault vs remote/gitea status
   pull     Pull newer changes from remote/gitea for the vault
   commit   Commit local vault changes and push to remote/gitea
+  Options for commit/pull:
+    --dry-run   Show what would be done without making changes
 EOF
 }
 
@@ -31,6 +33,20 @@ if [ $# -lt 1 ]; then
 fi
 
 cmd=$1
+shift
+
+# parse optional flags (supports --dry-run)
+DRY_RUN=0
+ARGS=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dry-run)
+      DRY_RUN=1; shift ;;
+    --)
+      shift; break ;;
+    *) ARGS+=("$1"); shift ;;
+  esac
+done
 
 # ensure vault dir exists
 if [ -z "${VAULT_DIR:-}" ] || [ ! -d "$VAULT_DIR" ]; then
@@ -165,6 +181,13 @@ perform_pull() {
   fi
 
   echo "Pulling changes from gitea/$branch..."
+  if [ "$DRY_RUN" -eq 1 ]; then
+    echo "DRY RUN: would attempt fast-forward pull. Remote commits ahead:"
+    git --no-pager log --oneline "$branch".."$remote_ref" -- "$VAULT_REL" || true
+    popd >/dev/null
+    return
+  fi
+
   if git pull --ff-only gitea "$branch" 2>/dev/null; then
     echo "Fast-forwarded to remote."; popd >/dev/null; return
   fi
@@ -244,6 +267,17 @@ do_commit() {
 
   # Create commit message
   msg=$(make_commit_message)
+  if [ "$DRY_RUN" -eq 1 ]; then
+    echo "DRY RUN: would create commit with message:"
+    echo "-----------------"
+    echo "$msg"
+    echo "-----------------"
+    echo "DRY RUN: staged changes (name-status):"
+    git --no-pager diff --cached --name-status -- "$VAULT_REL" || true
+    popd >/dev/null
+    return
+  fi
+
   git commit -m "$msg"
 
   echo "Pushing to gitea/$branch..."
