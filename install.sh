@@ -14,33 +14,37 @@ SAMPLE_VAULT_DIR="$PREFIX_DIR/sample-vault"
 echo "Installing daily-note to: $PREFIX_DIR"
 
 # Handle uninstall invocation: `install.sh --uninstall` removes installed files
-if [ "${1:-}" = "--uninstall" ]; then
-  echo "Uninstalling daily-note from: $PREFIX_DIR"
-  removed=()
-  if [ -d "$SCRIPTS_DIR" ]; then
-    removed+=("$SCRIPTS_DIR")
-    rm -rf "$SCRIPTS_DIR"
-  fi
-  OBS_SHIM="$XDG_BIN_HOME/obs"
-  if [ -f "$OBS_SHIM" ]; then
-    removed+=("$OBS_SHIM")
-    rm -f "$OBS_SHIM"
-  fi
-  MANPAGE="$PREFIX_DIR/share/man/man1/obs.1"
-  if [ -f "$MANPAGE" ]; then
-    removed+=("$MANPAGE")
-    rm -f "$MANPAGE"
-    rmdir --ignore-fail-on-non-empty "$(dirname "$MANPAGE")" 2>/dev/null || true
-  fi
-  if [ ${#removed[@]} -eq 0 ]; then
-    echo "Nothing removed: no installed files found at expected locations."
-    exit 0
-  fi
-  echo "Removed the following files/directories:"
-  for f in "${removed[@]}"; do
-    echo " - $f"
+if [ "$#" -gt 0 ]; then
+  for _arg in "$@"; do
+    if [ "$_arg" = "--uninstall" ]; then
+      echo "Uninstalling daily-note from: $PREFIX_DIR"
+      removed=()
+      if [ -d "$SCRIPTS_DIR" ]; then
+        removed+=("$SCRIPTS_DIR")
+        rm -rf "$SCRIPTS_DIR"
+      fi
+      OBS_SHIM="$XDG_BIN_HOME/obs"
+      if [ -f "$OBS_SHIM" ]; then
+        removed+=("$OBS_SHIM")
+        rm -f "$OBS_SHIM"
+      fi
+      MANPAGE="$PREFIX_DIR/share/man/man1/obs.1"
+      if [ -f "$MANPAGE" ]; then
+        removed+=("$MANPAGE")
+        rm -f "$MANPAGE"
+        rmdir --ignore-fail-on-non-empty "$(dirname "$MANPAGE")" 2>/dev/null || true
+      fi
+      if [ ${#removed[@]} -eq 0 ]; then
+        echo "Nothing removed: no installed files found at expected locations."
+        exit 0
+      fi
+      echo "Removed the following files/directories:"
+      for f in "${removed[@]}"; do
+        echo " - $f"
+      done
+      exit 0
+    fi
   done
-  exit 0
 fi
 
 mkdir -p "$PREFIX_DIR"
@@ -100,11 +104,12 @@ echo "Creating shim: $OBS_SHIM -> $SCRIPTS_DIR/main.sh"
 cat > "$OBS_SHIM" <<EOF
 #!/usr/bin/env bash
 SCRIPTS_DIR="$SCRIPTS_DIR"
-
 # Delegate uninstall to the installer so uninstall logic is centralized.
-if [ "${1:-}" = "--uninstall" ]; then
-  exec "$SCRIPTS_DIR/install.sh" --uninstall
-fi
+for __arg in "\$@"; do
+  if [ "__arg" = "--uninstall" ] || [ "\$__arg" = "--uninstall" ]; then
+    exec "$SCRIPTS_DIR/install.sh" --uninstall
+  fi
+done
 
 exec "$SCRIPTS_DIR/main.sh" "\$@"
 EOF
