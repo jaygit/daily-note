@@ -40,6 +40,7 @@ run_test() {
 # Run tests located in $ROOT_DIR/tests
 run_test "$ROOT_DIR/tests/test_jobs.sh"
 run_test "$ROOT_DIR/tests/test_create_note.sh"
+run_test "$ROOT_DIR/tests/test_dotenv.sh"
 
 # cleanup test helpers
 if declare -f test_lib_cleanup >/dev/null 2>&1; then

@@ -3,10 +3,33 @@
 
 # Resolve the directory containing this file (works when sourced)
 SCRIPT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+
+export SCRIPT_DIR VAULT_DIR
+# Load .env if present and export any variables it defines.
+# Search order: current working dir, script dir, script parent, vault dir.
+load_dotenv() {
+	local envfile
+	local candidates
+	candidates=("$PWD/.env" "$SCRIPT_DIR/.env" "$SCRIPT_DIR/../.env" )
+	for envfile in "${candidates[@]}"; do
+		if [ -f "$envfile" ]; then
+			# shellcheck disable=SC1090
+			set -a
+			. "$envfile"
+			set +a
+			return 0
+		fi
+	done
+	return 1
+}
+
+# Attempt to load .env silently if present. This will export variables
+# declared in the file so scripts can rely on them as environment variables.
+load_dotenv >/dev/null 2>&1 || true
 # Allow callers (tests/CI) to override VAULT_DIR via env; otherwise default to parent of scripts/
 VAULT_DIR="${VAULT_DIR:-$(realpath "$SCRIPT_DIR/..")}" 
 
-export SCRIPT_DIR VAULT_DIR
+
 # detect gum
 if command -v gum >/dev/null 2>&1; then
   USE_GUM=true
