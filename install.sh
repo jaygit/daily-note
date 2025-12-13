@@ -292,14 +292,41 @@ fi
 
 # Install a minimal manpage for `obs` under the prefix so users can add it to
 # their MANPATH if they wish. This is optional but useful for completion.
-MAN_DIR="$PREFIX_DIR/share/man/man1"
-mkdir -p "$MAN_DIR"
-# Prefer installing the static manpage shipped in the package if present.
-if [ -f "$PKG_ROOT/man/obs.1" ]; then
-  cp "$PKG_ROOT/man/obs.1" "$MAN_DIR/obs.1"
-else
-  # Fallback: write a minimal manpage
-  cat > "$MAN_DIR/obs.1" <<'MAN'
+## Install manpage preferentially into an existing writable manpath so
+## `man obs` works immediately without the user changing MANPATH.
+man_src="$PKG_ROOT/man/obs.1"
+installed_man=""
+if [ -f "$man_src" ]; then
+  # Get system manpath list; fallback to common locations
+  manpath_list=$(manpath 2>/dev/null || echo "$XDG_DATA_HOME/share/man:/usr/local/share/man:/usr/share/man")
+  IFS=':' read -ra paths <<<"$manpath_list"
+  for base in "${paths[@]}"; do
+    [ -z "$base" ] && continue
+    target="$base/man1"
+    # If directory exists and writable, use it. If it doesn't exist but parent is writable, create it.
+    if [ -d "$target" ] && [ -w "$target" ]; then
+      mkdir -p "$target"
+      cp "$man_src" "$target/obs.1"
+      installed_man="$target/obs.1"
+      break
+    elif [ ! -d "$target" ] && [ -w "$base" ]; then
+      mkdir -p "$target"
+      cp "$man_src" "$target/obs.1"
+      installed_man="$target/obs.1"
+      break
+    fi
+  done
+fi
+
+# If not installed into a system manpath, fall back to the user prefix man dir
+if [ -z "$installed_man" ]; then
+  MAN_DIR="$PREFIX_DIR/share/man/man1"
+  mkdir -p "$MAN_DIR"
+  if [ -f "$man_src" ]; then
+    cp "$man_src" "$MAN_DIR/obs.1"
+  else
+    # fallback minimal manpage if source missing
+    cat > "$MAN_DIR/obs.1" <<'MAN'
 .TH obs 1 "2025-12-13" "daily-note"
 .SH NAME
 obs \- helper shim for daily-note
@@ -315,10 +342,15 @@ to remove installed files created by the installer.
 The manpage is installed under the user prefix; add the prefix man directory
 to your MANPATH if you want "man obs" to find it.
 MAN
+  fi
+  installed_man="$MAN_DIR/obs.1"
+  echo
+  echo "Manpage installed to: $installed_man"
+  echo "If 'man obs' does not show this page, add $PREFIX_DIR/share/man to your MANPATH or run:"
+  echo "  man -M $PREFIX_DIR/share/man obs"
+else
+  echo
+  echo "Manpage installed to system manpath: $installed_man"
 fi
-
-echo
-echo "Manpage installed to: $MAN_DIR/obs.1"
-echo "Add $PREFIX_DIR/share/man to your MANPATH (or run 'man -M $PREFIX_DIR/share/man obs')."
 
 exit 0
