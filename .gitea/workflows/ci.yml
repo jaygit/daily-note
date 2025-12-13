@@ -95,6 +95,11 @@ jobs:
           echo "DEBUG: ensure_host target=$TARGET_HOST host_ip=${HOST_IP:-} port=${HOST_PORT:-} status=$status message=$debug_msg"
 
           if [ "$status" -eq 0 ]; then
+            echo "Adding hosts entry: ${HOST_IP} gitea"
+            # append mapping to /etc/hosts (requires sudo in runner)
+            sudo bash -c "echo '${HOST_IP} gitea' >> /etc/hosts"
+            grep -F "${HOST_IP} gitea" /etc/hosts || true
+
             exit 0
           else
             exit 1
@@ -104,27 +109,15 @@ jobs:
         run: |
           ./tests/run_tests.sh
 
-      - name: Prepare test logs
-        if: always()
+      - name: Upload test logs
+        if: steps.ensure_host.outputs.ensure_host_status == '-1'
         run: |
-          echo "Preparing test logs (if any)"
-          # create a tarball of tests/logs if it exists; otherwise create a small placeholder tarball
+          echo "Uploading test logs (if any)"
+          # create a tarball of tests/logs if it exists
           if [ -d tests/logs ]; then
             tar czf test-logs.tar.gz -C tests logs || true
             ls -l test-logs.tar.gz || true
           else
-            echo "No tests/logs directory present — creating placeholder tarball"
-            mkdir -p .artifacts_placeholder
-            echo "no test logs" > .artifacts_placeholder/README.txt
-            tar czf test-logs.tar.gz -C .artifacts_placeholder README.txt || true
-            ls -l test-logs.tar.gz || true
+            echo "No tests/logs directory present"
           fi
-        continue-on-error: true
-
-      - name: Upload test logs artifact
-        if: always()
-        uses: actions/upload-artifact@v3
-        with:
-          name: test-logs
-          path: test-logs.tar.gz
         continue-on-error: true
