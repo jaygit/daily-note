@@ -213,4 +213,22 @@ You can edit $ENV_FILE to tweak settings (e.g. VAULT_DIR).
 Run 'obs' to start the main tool.
 EOF
 
+# Recommend installing optional utilities for best experience
+missing=()
+if ! command -v rg >/dev/null 2>&1; then
+  missing+=("ripgrep (rg)")
+fi
+if ! command -v fzf >/dev/null 2>&1; then
+  missing+=("fzf")
+fi
+if ! command -v batcat >/dev/null 2>&1 && ! command -v bat >/dev/null 2>&1; then
+  missing+=("bat (batcat)")
+fi
+if [ ${#missing[@]} -gt 0 ]; then
+  echo
+  echo "Note: daily-note works best if the following utilities are installed:"
+  printf ' - %s\n' "${missing[@]}"
+  echo "Install them via your package manager (apt, yum, brew, etc.) for full functionality."
+fi
+
 exit 0
