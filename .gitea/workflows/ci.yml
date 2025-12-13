@@ -43,14 +43,9 @@ jobs:
           ./tests/run_tests.sh
 
       - name: Upload test logs
-        if: steps.ensure_host.outputs.ensure_host_status == '-1'
-        run: |
-          echo "Uploading test logs (if any)"
-          # create a tarball of tests/logs if it exists
-          if [ -d tests/logs ]; then
-            tar czf test-logs.tar.gz -C tests logs || true
-            ls -l test-logs.tar.gz || true
-          else
-            echo "No tests/logs directory present"
-          fi
-        continue-on-error: true
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-logs
+          path: ./tests/logs/**
+
