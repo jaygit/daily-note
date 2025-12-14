@@ -13,27 +13,47 @@ SAMPLE_VAULT_DIR="$PREFIX_DIR/sample-vault"
 
 echo "Installing daily-note to: $PREFIX_DIR"
 
+MANIFEST_FILE="$PREFIX_DIR/.installed_files"
+
 # Handle uninstall invocation: `install.sh --uninstall` removes installed files
 if [ "$#" -gt 0 ]; then
   for _arg in "$@"; do
     if [ "$_arg" = "--uninstall" ]; then
       echo "Uninstalling daily-note from: $PREFIX_DIR"
       removed=()
-      if [ -d "$SCRIPTS_DIR" ]; then
-        removed+=("$SCRIPTS_DIR")
-        rm -rf "$SCRIPTS_DIR"
+      # If a manifest exists, remove files listed there (one-per-line)
+      if [ -f "$MANIFEST_FILE" ]; then
+        while IFS= read -r p; do
+          [ -z "$p" ] && continue
+          if [ -e "$p" ]; then
+            removed+=("$p")
+            if [ -d "$p" ]; then
+              rm -rf "$p"
+            else
+              rm -f "$p"
+            fi
+          fi
+        done < "$MANIFEST_FILE"
+        rm -f "$MANIFEST_FILE"
+      else
+        # Fallback: try to remove expected locations
+        if [ -d "$SCRIPTS_DIR" ]; then
+          removed+=("$SCRIPTS_DIR")
+          rm -rf "$SCRIPTS_DIR"
+        fi
+        OBS_SHIM="$XDG_BIN_HOME/obs"
+        if [ -f "$OBS_SHIM" ]; then
+          removed+=("$OBS_SHIM")
+          rm -f "$OBS_SHIM"
+        fi
+        MANPAGE="$PREFIX_DIR/share/man/man1/obs.1"
+        if [ -f "$MANPAGE" ]; then
+          removed+=("$MANPAGE")
+          rm -f "$MANPAGE"
+          rmdir --ignore-fail-on-non-empty "$(dirname "$MANPAGE")" 2>/dev/null || true
+        fi
       fi
-      OBS_SHIM="$XDG_BIN_HOME/obs"
-      if [ -f "$OBS_SHIM" ]; then
-        removed+=("$OBS_SHIM")
-        rm -f "$OBS_SHIM"
-      fi
-      MANPAGE="$PREFIX_DIR/share/man/man1/obs.1"
-      if [ -f "$MANPAGE" ]; then
-        removed+=("$MANPAGE")
-        rm -f "$MANPAGE"
-        rmdir --ignore-fail-on-non-empty "$(dirname "$MANPAGE")" 2>/dev/null || true
-      fi
+
       if [ ${#removed[@]} -eq 0 ]; then
         echo "Nothing removed: no installed files found at expected locations."
         exit 0
@@ -132,6 +152,11 @@ done
 exec "$SCRIPTS_DIR/main.sh" "\$@"
 EOF
 chmod +x "$OBS_SHIM"
+
+# Record installed files so uninstall can remove them reliably
+mkdir -p "$PREFIX_DIR"
+MANIFEST_FILE="$PREFIX_DIR/.installed_files"
+printf "%s\n" "$SCRIPTS_DIR" "$OBS_SHIM" > "$MANIFEST_FILE"
 
 # Notify user if $XDG_BIN_HOME is not in PATH
 if ! printf '%s' ":$PATH:" | grep -q ":$XDG_BIN_HOME:"; then
@@ -324,11 +349,15 @@ if [ -f "$man_src" ]; then
       mkdir -p "$target"
       cp "$man_src" "$target/obs.1"
       installed_man="$target/obs.1"
+      # record installed manpage path
+      printf "%s\n" "$installed_man" >> "$MANIFEST_FILE"
       break
     elif [ ! -d "$target" ] && [ -w "$base" ]; then
       mkdir -p "$target"
       cp "$man_src" "$target/obs.1"
       installed_man="$target/obs.1"
+      # record installed manpage path
+      printf "%s\n" "$installed_man" >> "$MANIFEST_FILE"
       break
     fi
   done
@@ -340,6 +369,8 @@ if [ -z "$installed_man" ]; then
   mkdir -p "$MAN_DIR"
   if [ -f "$man_src" ]; then
     cp "$man_src" "$MAN_DIR/obs.1"
+    # record installed manpage path
+    printf "%s\n" "$MAN_DIR/obs.1" >> "$MANIFEST_FILE"
   else
     # fallback minimal manpage if source missing
     cat > "$MAN_DIR/obs.1" <<'MAN'
@@ -360,6 +391,8 @@ to your MANPATH if you want "man obs" to find it.
 MAN
   fi
   installed_man="$MAN_DIR/obs.1"
+  # record installed manpage path
+  printf "%s\n" "$installed_man" >> "$MANIFEST_FILE"
   echo
   echo "Manpage installed to: $installed_man"
   echo "If 'man obs' does not show this page, add $PREFIX_DIR/share/man to your MANPATH or run:"
