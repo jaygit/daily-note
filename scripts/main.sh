@@ -52,8 +52,8 @@ for a in "$@"; do
       exit 0
       ;;
     -L|--logo)
-      # Print colored ASCII logo from repository assets (interprets backslash escapes)
-      ascii_file="$SCRIPT_DIR/../assets/obs-ascii.txt"
+      # Print colored ASCII logo from the installed scripts directory (interprets backslash escapes)
+      ascii_file="$SCRIPT_DIR/obs-ascii.txt"
       if [ -f "$ascii_file" ]; then
         printf "%b\n" "$(cat "$ascii_file")"
       else
