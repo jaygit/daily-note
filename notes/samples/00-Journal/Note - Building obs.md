@@ -7,6 +7,8 @@ tags: [journal,blog,obs]
 
 I wanted a lightweight, platform-agnostic way to create and manage notes from the shell — a command-line companion for Obsidian vaults that favors openness and composability. Because Obsidian stores plain Markdown in a folder, it’s naturally extensible: any CLI tool can create, edit, and link notes. This project, packaged as the `obs` helper scripts, grew from that idea.
 
+![obs logo](../../../assets/obs.jpg)
+
 Motivation
 - Why CLI-first: Quick capture, scripted workflows, and easy automation — the terminal remains the fastest way for me to create structured notes while I’m already in a shell environment.
 - Why Obsidian-friendly: Obsidian’s vault is just a directory of Markdown; staying compatible keeps the data portable and editable by many tools. This openness allowed me to iterate on tooling without locking content into a closed format.
