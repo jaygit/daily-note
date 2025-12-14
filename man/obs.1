@@ -6,6 +6,7 @@ obs \- command dispatcher for daily-note scripts
 [\-\-uninstall]
 .BR -o " <operation> " [ -- ] [ args... ]
 .BR -h , " --help"
+.BR -v , " --version"
 
 .SH DESCRIPTION
 .B obs
@@ -41,6 +42,9 @@ Specify the operation to run. Required.
 .TP
 .BR -h , " --help"
 Show this help and exit.
+.TP
+.BR -v , " --version"
+Print the installed package version and exit. The shim reads the `VERSION` value persisted by the installer (written to `scripts/.env` in the installed tree) or falls back to a release tag when available.
 .TP
 .BR --uninstall
 When invoked as the installed shim (\fBobs\fR), delegates to the installer to

@@ -144,6 +144,20 @@ obs --uninstall
 ## Key scripts
 
 - `scripts/main.sh` — entry point and dispatcher; supports `-v|--version` which reads `VERSION` from `scripts/.env` (installed tree) or detects it from `RELEASE_NOTES`/git tags.
+- `scripts/main.sh` — entry point and dispatcher; supports `-v|--version` which reads `VERSION` from `scripts/.env` (installed tree) or detects it from `RELEASE_NOTES`/git tags.
+
+Version
+-------
+
+- Show the installed `obs` version:
+
+```bash
+obs -v
+# or
+obs --version
+```
+
+This prints the value persisted by the installer into `scripts/.env` (the installer writes `VERSION=<tag>` when available). When running from source the tools will attempt to determine the version from `RELEASE_NOTES/v.*.md` or an annotated git tag.
 - `scripts/create_note.sh` — create notes (interactive or non-interactive via flags).
 - `scripts/search.sh` — fuzzy search with previews; diary mode available (`diary` subcommand or `main.sh -o diary`).
 - `scripts/gitnotes.sh` — vault-focused git helpers (`status`, `pull`, `commit`) that use the configured `GIT_REMOTE_*` settings.
