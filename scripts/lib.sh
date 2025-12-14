@@ -10,7 +10,9 @@ export SCRIPT_DIR VAULT_DIR
 load_dotenv() {
 	local envfile
 	local candidates
-	candidates=("$PWD/.env" "$SCRIPT_DIR/.env" "$SCRIPT_DIR/../.env" )
+	# Prefer env written by the installer under XDG_DATA_HOME, then local
+	# project .env, then scripts/.env and parent .env.
+	candidates=("${XDG_DATA_HOME:-$HOME/.local/share}/daily-note/scripts/.env" "$PWD/.env" "$SCRIPT_DIR/.env" "$SCRIPT_DIR/../.env")
 	for envfile in "${candidates[@]}"; do
 		if [ -f "$envfile" ]; then
 			# shellcheck disable=SC1090
