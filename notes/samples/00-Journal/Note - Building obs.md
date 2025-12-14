@@ -38,6 +38,10 @@ I wanted a lightweight, platform-agnostic way to create and manage notes from th
 ### 6) Platform-agnostic installer
 - Built `install.sh` to install to XDG-aware paths, persist `VERSION` in `scripts/.env`, create an `obs` shim, and provide `--uninstall` delegation. Uses `rsync` when available or tar/cp fallbacks otherwise.
 
+Notes:
+- The installer and the `obs` shim accept both `--uninstall` and `--remove` (the latter is an alias for discoverability).
+- As a small easter-egg the shim supports `-L|--logo` to print the packaged ASCII logo (try `obs -L`).
+
 ### 7) CI and workflow hardening
 - Iterated on CI workflow YAML to add host-resolution fallbacks for private runners, ensure artifact uploads are compatible with GHES/private environments, and add deterministic debugging output.
 
