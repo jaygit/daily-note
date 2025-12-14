@@ -222,6 +222,10 @@ scripts/main.sh -o search
 
 Easter egg:
 - The `-L|--logo` flag prints the packaged ASCII logo to stdout (try `obs -L`).
+ - The `-L|--logo` flag prints the packaged ASCII logo to stdout (try `obs -L`).
+ - The `-E|--easter` flag is a small interactive easter-egg: run `obs -E` and type the
+   sequence `o b s` (3s timeout per key) to trigger a falling-block animation of the
+   packaged ASCII logo. Requires a TTY.
 
 ## Backlinks behavior
 

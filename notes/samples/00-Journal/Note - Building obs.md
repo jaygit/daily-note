@@ -41,6 +41,8 @@ I wanted a lightweight, platform-agnostic way to create and manage notes from th
 Notes:
 - The installer and the `obs` shim accept both `--uninstall` and `--remove` (the latter is an alias for discoverability).
 - As a small easter-egg the shim supports `-L|--logo` to print the packaged ASCII logo (try `obs -L`).
+- There's an interactive easter-egg `-E|--easter`: run `obs -E` from a TTY and type the sequence
+	`o b s` (3s timeout per key) to trigger a falling-block animation of the packaged ASCII logo.
 
 ### 7) CI and workflow hardening
 - Iterated on CI workflow YAML to add host-resolution fallbacks for private runners, ensure artifact uploads are compatible with GHES/private environments, and add deterministic debugging output.

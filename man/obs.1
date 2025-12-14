@@ -3,8 +3,8 @@
 obs \- command dispatcher for daily-note scripts
 .SH SYNOPSIS
 .B obs
-[\-\-uninstall|\-\-remove]
 .BR -L , " -\-logo"
+.BR -E , " -\-easter"
 .BR -o " <operation> " [ -- ] [ args... ]
 .BR -h , " --help"
 .BR -v , " --version"
@@ -62,6 +62,12 @@ Alias for \fB--uninstall\fR retained for discoverability; behaves identically.
 .TP
 .BR -L , " --logo"
 Print the packaged ASCII logo to stdout (useful as an easter-egg or visual header).
+
+.TP
+.BR -E , " --easter"
+Trigger the easter-egg animation. When run from a TTY `obs -E` will prompt for the
+three-key sequence `o b s` (3s timeout per key). On correct input the packaged
+ASCII logo is animated in the terminal via a small falling-block effect.
 
 .SH EXAMPLES
 .TP
