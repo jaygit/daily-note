@@ -61,6 +61,47 @@ for a in "$@"; do
       fi
       exit 0
       ;;
+    -E|--easter)
+      # Easter-egg: require user to type the sequence 'o' 'b' 's' (case-insensitive)
+      if [ ! -t 0 ]; then
+        printf 'Easter egg requires a TTY\n' >&2
+        exit 2
+      fi
+      printf 'Press the key sequence "o b s" (3s timeout per key): '
+      seq="obs"
+      i=0
+      success=1
+      while [ $i -lt ${#seq} ]; do
+        # read a single char with timeout
+        if ! IFS= read -rsn1 -t 3 ch; then
+          success=0; break
+        fi
+        ch=$(printf '%s' "$ch" | tr '[:upper:]' '[:lower:]')
+        if [ "$ch" = "${seq:$i:1}" ]; then
+          i=$((i+1))
+        else
+          success=0; break
+        fi
+      done
+      echo
+      if [ $success -eq 1 ]; then
+        # call animation from lib (lib.sh already sourced)
+        if type animate_obs_logo >/dev/null 2>&1; then
+          animate_obs_logo 0.03
+        else
+          # fallback to printing static logo
+          ascii_file="$SCRIPT_DIR/obs-ascii.txt"
+          if [ -f "$ascii_file" ]; then
+            printf '%s\n' "$(cat "$ascii_file")"
+          else
+            printf 'obs\n'
+          fi
+        fi
+      else
+        printf 'Sequence not detected.\n'
+      fi
+      exit 0
+      ;;
   esac
 done
 
