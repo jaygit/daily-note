@@ -155,25 +155,6 @@ fi
 if [ -n "$VERSION_VAL" ]; then
   echo "VERSION=$VERSION_VAL" >> "$ENV_FILE"
 fi
-
-## Non-interactive / scripted options
-INSTALL_SAMPLE=0
-YES=0
-OVERRIDE_VAULT=""
-while [ $# -gt 0 ]; do
-  case "$1" in
-    --yes)
-      YES=1; INSTALL_SAMPLE=1; shift ;;
-    --sample-vault)
-      INSTALL_SAMPLE=1; shift ;;
-    --vault-path)
-      OVERRIDE_VAULT="$2"; shift 2 ;;
-    --help)
-      echo "Usage: $0 [--yes|--sample-vault|--vault-path <path>]"; exit 0 ;;
-    *) echo "Unknown option: $1"; exit 2 ;;
-  esac
-done
-
 if [ -n "$OVERRIDE_VAULT" ]; then
   VAULT_PATH="$OVERRIDE_VAULT"
   VAULT_PATH="${VAULT_PATH/#\~/$HOME}"
@@ -222,7 +203,7 @@ else
             cp -a "$PKG_ROOT/notes/samples/." "$SAMPLE_VAULT_DIR/" || true
           fi
       fi
-      echo "VAULT_DIR=$SAMPLE_VAULT_DIR" >> "$ENV_FILE"
+      echo "VAULT_DIR=\"$SAMPLE_VAULT_DIR\"" >> "$ENV_FILE"
       echo "Installed sample vault at: $SAMPLE_VAULT_DIR"
     else
       # ask if user has existing vault
