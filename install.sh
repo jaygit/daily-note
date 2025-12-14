@@ -18,7 +18,7 @@ MANIFEST_FILE="$PREFIX_DIR/.installed_files"
 # Handle uninstall invocation: `install.sh --uninstall` removes installed files
 if [ "$#" -gt 0 ]; then
   for _arg in "$@"; do
-    if [ "$_arg" = "--uninstall" ]; then
+    if [ "$_arg" = "--uninstall" ] || [ "$_arg" = "--remove" ]; then
       echo "Uninstalling daily-note from: $PREFIX_DIR"
       removed=()
       # If a manifest exists, remove files listed there (one-per-line)
@@ -143,8 +143,8 @@ cat > "$OBS_SHIM" <<EOF
 #!/usr/bin/env bash
 SCRIPTS_DIR="$SCRIPTS_DIR"
 # Delegate uninstall to the installer so uninstall logic is centralized.
-for __arg in "\$@"; do
-  if [ "__arg" = "--uninstall" ] || [ "\$__arg" = "--uninstall" ]; then
+  for __arg in "\$@"; do
+  if [ "__arg" = "--uninstall" ] || [ "\$__arg" = "--uninstall" ] || [ "__arg" = "--remove" ] || [ "\$__arg" = "--remove" ]; then
     exec "$SCRIPTS_DIR/install.sh" --uninstall
   fi
 done
