@@ -56,4 +56,3 @@ How to reuse
 - Override `FZF_CMD` for deterministic tests.
 
 This note saved on 2025-12-13.
-
