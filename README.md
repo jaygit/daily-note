@@ -1,5 +1,14 @@
 # Daily Notes Scripts
 
+```
+OOO    BBBB   SSSS
+O  O   B   B S
+O  O   BBBB   SSS
+O  O   B   B     S
+ OOO   BBBB   SSSS
+
+```
+
 This repository contains helper shell scripts to manage and navigate an Obsidian-style vault. The scripts live in the `scripts/` directory and assume the vault root is the parent directory.
 
 ## Key scripts
