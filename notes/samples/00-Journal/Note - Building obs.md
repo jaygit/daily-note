@@ -1,4 +1,3 @@
-```markdown
 ---
 title: Building obs — CLI Obsidian Companion
 created: 2025-12-13
@@ -58,4 +57,3 @@ How to reuse
 
 This note saved on 2025-12-13.
 
-```
