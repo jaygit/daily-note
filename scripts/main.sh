@@ -51,6 +51,16 @@ for a in "$@"; do
       printf 'BAT_AVAILABLE=%s\n' "${BAT_AVAILABLE:-}"
       exit 0
       ;;
+    -L|--logo)
+      # Print colored ASCII logo from repository assets (interprets backslash escapes)
+      ascii_file="$SCRIPT_DIR/../assets/obs-ascii.txt"
+      if [ -f "$ascii_file" ]; then
+        printf "%b\n" "$(cat "$ascii_file")"
+      else
+        printf 'obs\n'
+      fi
+      exit 0
+      ;;
   esac
 done
 
