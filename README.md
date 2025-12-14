@@ -150,6 +150,8 @@ obs --uninstall
 ./install.sh --uninstall --yes
 ```
 
+Both `--uninstall` and `--remove` are accepted; `--remove` is an alias for `--uninstall` provided for discoverability.
+
 ## Key scripts
 
 - `scripts/main.sh` — entry point and dispatcher; supports `-v|--version` which reads `VERSION` from `scripts/.env` (installed tree) or detects it from `RELEASE_NOTES`/git tags.
@@ -216,6 +218,10 @@ scripts/main.sh -o search
 
 - Release packaging discovers `VERSION` from `RELEASE_NOTES/v.*.md` or from an annotated git tag and the installer persists that `VERSION` into `scripts/.env` so `obs --version` continues to work after install.
 - The `obs` shim delegates `--uninstall` to the installer so the installed tree can cleanly remove files it created.
+ - The `obs` shim delegates `--uninstall`/`--remove` to the installer so the installed tree can cleanly remove files it created.
+
+Easter egg:
+- The `-L|--logo` flag prints the packaged ASCII logo to stdout (try `obs -L`).
 
 ## Backlinks behavior
 

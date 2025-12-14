@@ -3,7 +3,8 @@
 obs \- command dispatcher for daily-note scripts
 .SH SYNOPSIS
 .B obs
-[\-\-uninstall]
+[\-\-uninstall|\-\-remove]
+.BR -L , " -\-logo"
 .BR -o " <operation> " [ -- ] [ args... ]
 .BR -h , " --help"
 .BR -v , " --version"
@@ -53,6 +54,14 @@ Print environment variables that `obs` is currently configured with (for example
 .BR --uninstall
 When invoked as the installed shim (\fBobs\fR), delegates to the installer to
 remove installed files (scripts, shim and manpage). Use with care.
+
+.TP
+.BR --remove
+Alias for \fB--uninstall\fR retained for discoverability; behaves identically.
+
+.TP
+.BR -L , " --logo"
+Print the packaged ASCII logo to stdout (useful as an easter-egg or visual header).
 
 .SH EXAMPLES
 .TP
