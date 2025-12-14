@@ -158,6 +158,19 @@ obs --version
 ```
 
 This prints the value persisted by the installer into `scripts/.env` (the installer writes `VERSION=<tag>` when available). When running from source the tools will attempt to determine the version from `RELEASE_NOTES/v.*.md` or an annotated git tag.
+
+Environment
+-----------
+
+Inspect the environment `obs` is using (useful for debugging installed configuration):
+
+```bash
+obs --env
+# or
+obs -e
+```
+
+This prints common runtime variables such as `VAULT_DIR`, `VERSION`, any configured `GIT_REMOTE_*`, and availability flags for `fzf`, `rg`, and `bat`.
 - `scripts/create_note.sh` — create notes (interactive or non-interactive via flags).
 - `scripts/search.sh` — fuzzy search with previews; diary mode available (`diary` subcommand or `main.sh -o diary`).
 - `scripts/gitnotes.sh` — vault-focused git helpers (`status`, `pull`, `commit`) that use the configured `GIT_REMOTE_*` settings.

@@ -46,6 +46,9 @@ Show this help and exit.
 .BR -v , " --version"
 Print the installed package version and exit. The shim reads the `VERSION` value persisted by the installer (written to `scripts/.env` in the installed tree) or falls back to a release tag when available.
 .TP
+.BR -e , " --env"
+Print environment variables that `obs` is currently configured with (for example: `VAULT_DIR`, `VERSION`, `GIT_REMOTE_*`, and tool availability flags). Useful for debugging installed or sourced configurations.
+.TP
 .BR --uninstall
 When invoked as the installed shim (\fBobs\fR), delegates to the installer to
 remove installed files (scripts, shim and manpage). Use with care.

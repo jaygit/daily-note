@@ -37,6 +37,20 @@ for a in "$@"; do
       get_version
       exit 0
       ;;
+    -e|--env)
+      # Print environment variables that obs is configured with and exit.
+      # `lib.sh` is already sourced above so variables like VAULT_DIR and VERSION
+      # are available.
+      printf 'SCRIPT_DIR=%s\n' "${SCRIPT_DIR:-}"
+      printf 'VAULT_DIR=%s\n' "${VAULT_DIR:-}"
+      printf 'VERSION=%s\n' "${VERSION:-}"
+      printf 'GIT_REMOTE_NAME=%s\n' "${GIT_REMOTE_NAME:-}"
+      printf 'GIT_REMOTE_URL=%s\n' "${GIT_REMOTE_URL:-}"
+      printf 'FZF_AVAILABLE=%s\n' "${FZF_AVAILABLE:-}"
+      printf 'RG_AVAILABLE=%s\n' "${RG_AVAILABLE:-}"
+      printf 'BAT_AVAILABLE=%s\n' "${BAT_AVAILABLE:-}"
+      exit 0
+      ;;
   esac
 done
 
