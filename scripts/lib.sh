@@ -415,3 +415,83 @@ update_daily_note_with_link() {
 }
 
 # End of lib.sh
+
+# Animate the ASCII logo from scripts/obs-ascii.txt with a simple "falling blocks" effect.
+# Usage: animate_obs_logo [delay]
+#   delay: optional seconds per step (default: 0.02)
+animate_obs_logo() {
+	local delay=${1:-0.02}
+	local ascii_file="${SCRIPT_DIR}/obs-ascii.txt"
+	if [ ! -f "$ascii_file" ]; then
+		echo "No ascii file: $ascii_file" >&2
+		return 1
+	fi
+
+	# Read lines into array
+	mapfile -t _lines < "$ascii_file"
+	# Trim trailing empty lines
+	while [ ${#_lines[@]} -gt 0 ] && [ -z "${_lines[-1]}" ]; do
+		unset '_lines[-1]'
+	done
+	local rows=${#_lines[@]}
+	if [ $rows -eq 0 ]; then
+		return 0
+	fi
+
+	# Determine max columns
+	local cols=0
+	for l in "${_lines[@]}"; do
+		if [ ${#l} -gt $cols ]; then cols=${#l}; fi
+	done
+
+	# Normalize lines to same width
+	for i in "${!_lines[@]}"; do
+		_lines[$i]="$(printf '%-*s' "$cols" "${_lines[$i]}")"
+	done
+
+	# Prepare blank display
+	local display
+	for ((i=0;i<rows;i++)); do
+		display[$i]="$(printf '%*s' "$cols" '')"
+	done
+
+	# Hide cursor and ensure it is restored on exit
+	tput civis 2>/dev/null || true
+	trap 'tput cnorm 2>/dev/null || true; stty sane 2>/dev/null || true; trap - EXIT' EXIT INT TERM
+
+	# Clear screen and position cursor
+	printf '\033[2J\033[H'
+
+	# For each column, drop characters that are non-space into their target row
+	local col row r ch
+	for ((col=0; col<cols; col++)); do
+		for ((row=0; row<rows; row++)); do
+			ch="${_lines[row]:col:1}"
+			if [ -n "$ch" ] && [ "$ch" != ' ' ]; then
+				# Drop from top (r=0) down to row
+				for ((r=0; r<=row; r++)); do
+					# place ch at display[r] at position col
+					display[$r]="${display[$r]:0:col}$ch${display[$r]:col+1}"
+					# render
+					printf '\033[H'
+					for ((i=0;i<rows;i++)); do
+						printf '%s\n' "${display[$i]}"
+					done
+					sleep "$delay"
+					# if not at final position, clear previous position for next step
+					if [ $r -lt $row ]; then
+						display[$r]="${display[$r]:0:col} ${display[$r]:col+1}"
+					fi
+				done
+			fi
+		done
+	done
+
+	# Final render to ensure complete image
+	printf '\033[H'
+	for ((i=0;i<rows;i++)); do printf '%s\n' "${_lines[$i]}"; done
+
+	# Restore cursor
+	tput cnorm 2>/dev/null || true
+	trap - EXIT INT TERM
+}
