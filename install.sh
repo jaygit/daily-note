@@ -47,6 +47,24 @@ if [ "$#" -gt 0 ]; then
   done
 fi
 
+## Parse options early so `--help` doesn't perform installs
+INSTALL_SAMPLE=0
+YES=0
+OVERRIDE_VAULT=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --yes)
+      YES=1; INSTALL_SAMPLE=1; shift ;;
+    --sample-vault)
+      INSTALL_SAMPLE=1; shift ;;
+    --vault-path)
+      OVERRIDE_VAULT="$2"; shift 2 ;;
+    --help)
+      echo "Usage: $0 [--yes|--sample-vault|--vault-path <path>]"; exit 0 ;;
+    *) echo "Unknown option: $1"; exit 2 ;;
+  esac
+done
+
 mkdir -p "$PREFIX_DIR"
 mkdir -p "$XDG_BIN_HOME"
 
@@ -160,7 +178,7 @@ if [ -n "$OVERRIDE_VAULT" ]; then
   VAULT_PATH="$OVERRIDE_VAULT"
   VAULT_PATH="${VAULT_PATH/#\~/$HOME}"
   if [ -d "$VAULT_PATH" ]; then
-    echo "VAULT_DIR=$VAULT_PATH" >> "$ENV_FILE"
+    echo "VAULT_DIR=\"$VAULT_PATH\"" >> "$ENV_FILE"
     echo "Configured VAULT_DIR -> $VAULT_PATH"
   else
     echo "Provided vault path does not exist: $VAULT_PATH" >&2
@@ -176,7 +194,7 @@ elif [ "$INSTALL_SAMPLE" -eq 1 ]; then
       cp -a "$PKG_ROOT/notes/samples/." "$SAMPLE_VAULT_DIR/" || true
     fi
   fi
-  echo "VAULT_DIR=$SAMPLE_VAULT_DIR" >> "$ENV_FILE"
+  echo "VAULT_DIR=\"$SAMPLE_VAULT_DIR\"" >> "$ENV_FILE"
   echo "Installed sample vault at: $SAMPLE_VAULT_DIR"
 else
   if [ "$YES" -eq 1 ]; then
@@ -189,7 +207,7 @@ else
           cp -a "$PKG_ROOT/notes/samples/." "$SAMPLE_VAULT_DIR/" || true
         fi
     fi
-    echo "VAULT_DIR=$SAMPLE_VAULT_DIR" >> "$ENV_FILE"
+    echo "VAULT_DIR=\"$SAMPLE_VAULT_DIR\"" >> "$ENV_FILE"
     echo "Installed sample vault at: $SAMPLE_VAULT_DIR"
   else
     # interactive fallback
@@ -211,15 +229,15 @@ else
       read -rp "Do you have an existing vault to use? (y/N) " -n 1 -r
       echo
       if [[ $REPLY =~ ^[Yy]$ ]]; then
-        read -rp "Enter path to your vault directory: " VAULT_PATH
-        VAULT_PATH="${VAULT_PATH/#\~/$HOME}"
-        if [ -d "$VAULT_PATH" ]; then
-          echo "VAULT_DIR=$VAULT_PATH" >> "$ENV_FILE"
-          echo "Configured VAULT_DIR -> $VAULT_PATH"
-        else
-          echo "Path does not exist: $VAULT_PATH" >&2
-          echo "Leaving VAULT_DIR unset. You can edit $ENV_FILE later." >&2
-        fi
+      read -rp "Enter path to your vault directory: " VAULT_PATH
+      VAULT_PATH="${VAULT_PATH/#\~/$HOME}"
+      if [ -d "$VAULT_PATH" ]; then
+        echo "VAULT_DIR=\"$VAULT_PATH\"" >> "$ENV_FILE"
+        echo "Configured VAULT_DIR -> $VAULT_PATH"
+      else
+        echo "Path does not exist: $VAULT_PATH" >&2
+        echo "Leaving VAULT_DIR unset. You can edit $ENV_FILE later." >&2
+      fi
       else
         echo "No vault configured. You can edit $ENV_FILE later to set VAULT_DIR." >&2
       fi
