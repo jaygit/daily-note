@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  obs-mcp:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: obs-mcp:latest
+    container_name: obs-mcp
+    ports:
+      - "8000:8000"
+    environment:
+      - VAULT_MOUNT=/vault
+    volumes:
+      # Replace ./vault with the path to your Obsidian vault
+      - ./vault:/vault:rw
+    restart: unless-stopped
