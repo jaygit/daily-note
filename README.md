@@ -115,6 +115,8 @@ Helper shell scripts to manage and navigate an Obsidian-style vault. The executa
 
 ## What's new
 
+- Canvas workflow: see `README_CANVAS.md` for canvas-style note tooling, scanned-note ingestion, and OCR examples.
+
 - Installer (`install.sh`) now installs only the `scripts/` tree under an XDG-aware prefix, creates a small `obs` shim in your XDG bin dir, and persists runtime settings in `scripts/.env` (includes `VAULT_DIR` and `VERSION`).
 - `scripts/lib.sh` loads and exports `.env` files (first one found) so installed scripts pick up `VAULT_DIR`, `GIT_REMOTE_*`, and `VERSION` automatically.
 - `scripts/search.sh` and other scripts provide fallbacks when tools are missing: `rg` → `grep`, `bat` → `cat`, `fzf` can be overridden with `FZF_CMD` (useful for tests).
