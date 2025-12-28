@@ -278,7 +278,16 @@ do_commit() {
     return
   fi
 
-  git commit -m "$msg"
+  # Use a temp file for the commit message to avoid exceeding the
+  # system's argument-size limit when the generated message is very large.
+  msgfile=$(mktemp)
+  printf "%s\n" "$msg" > "$msgfile"
+  git commit -F "$msgfile"
+  rc=$?
+  rm -f "$msgfile"
+  if [ $rc -ne 0 ]; then
+    exit $rc
+  fi
 
   echo "Pushing to gitea/$branch..."
   if git push gitea "$branch"; then
